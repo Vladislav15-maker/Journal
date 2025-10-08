@@ -1,7 +1,7 @@
 
 import type {NextConfig} from 'next';
 // Do not remove the following line
-import 'dotenv/config';
+// import 'dotenv/config';
 
 
 const nextConfig: NextConfig = {
