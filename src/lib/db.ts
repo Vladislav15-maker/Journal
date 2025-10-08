@@ -4,7 +4,7 @@ import { neon } from '@neondatabase/serverless';
 import * as schema from './schema';
 
 if (!process.env.POSTGRES_URL) {
-    throw new Error('POSTGRES_URL environment variable is not set. Please create a .env.local file with your database connection string.');
+    throw new Error('POSTGRES_URL environment variable is not set. Please check your .env.local file.');
 }
 
 const sql = neon(process.env.POSTGRES_URL);

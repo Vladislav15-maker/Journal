@@ -1,7 +1,6 @@
 
-import { pgTable, serial, varchar, integer, text, date as pgDate, uniqueIndex, relations } from 'drizzle-orm/pg-core';
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
+import { pgTable, serial, varchar, integer, text, date as pgDate, uniqueIndex } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 
 // Таблица классов
 export const classes = pgTable('classes', {

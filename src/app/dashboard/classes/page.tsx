@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { db } from '@/lib/db';
-import { classes, students, subjects } from '@/lib/schema';
+import { classes } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from "@/components/ui/card";
 import { Users } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import {
