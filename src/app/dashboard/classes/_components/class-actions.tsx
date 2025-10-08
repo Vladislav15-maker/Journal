@@ -20,6 +20,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -80,6 +81,9 @@ export function AddClassButton() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Создать новый класс</DialogTitle>
+          <DialogDescription>
+            Введите название нового класса. Например: 10А.
+          </DialogDescription>
         </DialogHeader>
         <form action={handleAddClass} ref={formRef} className="space-y-4">
           <div>
