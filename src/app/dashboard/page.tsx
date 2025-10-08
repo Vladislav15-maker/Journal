@@ -11,6 +11,7 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
     const allClasses = await db.query.classes.findMany({
         with: {
             subjects: true,
+            students: true, // Eagerly load students for all classes
         }
     });
 
@@ -29,6 +30,7 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
 
     const selectedSubjectId = searchParams.subjectId 
         ? parseInt(searchParams.subjectId)
+        // Ensure that a valid subject is selected if the class changes
         : currentClass?.subjects[0]?.id;
 
     let currentLessons: (typeof lessonsTable.$inferSelect)[] = [];
@@ -39,8 +41,8 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
         });
     }
 
-    const studentIds = currentClass?.students.map(s => s.id) ?? [];
-    const lessonIds = currentLessons.map(l => l.id) ?? [];
+    const studentIds = currentClass?.students?.map(s => s.id) ?? [];
+    const lessonIds = currentLessons.map(l => l.id);
 
     let currentGrades: (typeof gradesTable.$inferSelect)[] = [];
     if (studentIds.length > 0 && lessonIds.length > 0) {

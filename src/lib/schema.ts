@@ -1,5 +1,5 @@
 
-import { pgTable, serial, varchar, integer, text, date as pgDate, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, integer, text, date as pgDate, uniqueIndex, timestamp } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Таблица классов
@@ -113,5 +113,5 @@ export const messages = pgTable('messages', {
     recipientName: varchar('recipient_name', { length: 256 }).notNull(),
     recipientType: varchar('recipient_type', { length: 50 }).notNull(), // 'class' or 'student'
     message: text('message').notNull(),
-    timestamp: pgDate('timestamp', { mode: 'date' }).notNull().defaultNow(),
+    timestamp: timestamp('timestamp', { mode: 'date' }).notNull().defaultNow(),
 });
