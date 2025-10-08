@@ -19,7 +19,7 @@ export async function login(_prevState: FormState, formData: FormData): Promise<
   const password = formData.get("password");
 
   if (email === "Vladislav" && password === "Vladislav15") {
-    cookies().set("auth", "true", { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/' });
+    await cookies().set("auth", "true", { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/' });
     redirect("/dashboard");
   } else {
     return { message: "Неверный логин или пароль" };
@@ -49,29 +49,29 @@ export async function addClass(name: string) {
 
 export async function deleteClass(classId: number) {
   try {
-    // Drizzle with neon-serverless doesn't support automatic cascade deletes well, so we do it manually.
+    // Manually delete related items in correct order
+    const studentsToDelete = await db.query.students.findMany({ where: eq(students.classId, classId), columns: { id: true }});
+    if (studentsToDelete.length > 0) {
+        const studentIds = studentsToDelete.map(s => s.id);
+        await db.delete(grades).where(inArray(grades.studentId, studentIds));
+    }
+
     const subjectsToDelete = await db.query.subjects.findMany({ where: eq(subjects.classId, classId), columns: { id: true } });
     if (subjectsToDelete.length > 0) {
       const subjectIds = subjectsToDelete.map(s => s.id);
+      
       const lessonsToDelete = await db.query.lessons.findMany({ where: inArray(lessons.subjectId, subjectIds), columns: { id: true } });
       if (lessonsToDelete.length > 0) {
         const lessonIds = lessonsToDelete.map(l => l.id);
         await db.delete(grades).where(inArray(grades.lessonId, lessonIds));
       }
+      
       await db.delete(lessons).where(inArray(lessons.subjectId, subjectIds));
       await db.delete(scheduleItems).where(inArray(scheduleItems.subjectId, subjectIds));
+      await db.delete(subjects).where(eq(subjects.classId, classId));
     }
     
-    // Also delete students and their grades
-    const studentsToDelete = await db.query.students.findMany({ where: eq(students.classId, classId), columns: { id: true } });
-    if (studentsToDelete.length > 0) {
-        const studentIds = studentsToDelete.map(s => s.id);
-        await db.delete(grades).where(inArray(grades.studentId, studentIds));
-    }
     await db.delete(students).where(eq(students.classId, classId));
-    
-    // Now delete subjects and the class itself
-    await db.delete(subjects).where(eq(subjects.classId, classId));
     await db.delete(classes).where(eq(classes.id, classId));
     
     revalidatePath('/dashboard/classes');

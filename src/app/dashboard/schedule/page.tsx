@@ -33,10 +33,10 @@ export default async function SchedulePage({ searchParams }: { searchParams: { c
     const selectedClassId = searchParams.classId ? parseInt(searchParams.classId) : allClasses[0].id;
     const currentClass = allClasses.find(c => c.id === selectedClassId);
 
-    const classSchedule = await db.query.scheduleItems.findMany({
+    const classSchedule = currentClass ? await db.query.scheduleItems.findMany({
         where: eq(scheduleItems.classId, selectedClassId),
         orderBy: (scheduleItems, { asc }) => [asc(scheduleItems.lessonNumber)],
-    });
+    }) : [];
 
     return (
         <div className="space-y-6">
@@ -64,7 +64,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: { c
                                 <CardContent className="space-y-2">
                                     {classSchedule.filter(item => item.dayOfWeek === day).length > 0 ? (
                                         classSchedule.filter(item => item.dayOfWeek === day).map(item => {
-                                            const subject = currentClass?.subjects.find(s => s.id === item.subjectId);
+                                            const subject = currentClass?.subjects?.find(s => s.id === item.subjectId);
                                             return (
                                                 <div key={item.id} className="flex items-center justify-between p-2 rounded-md bg-muted">
                                                     <span className="font-medium">{item.lessonNumber}-й урок: {subject?.name || 'Неизвестный предмет'}</span>

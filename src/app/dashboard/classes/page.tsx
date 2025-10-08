@@ -97,7 +97,7 @@ export default async function ClassesPage({ searchParams }: { searchParams: Sear
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {currentClass.students.map((student, index) => (
+                        {currentClass.students?.map((student, index) => (
                           <TableRow key={student.id}>
                             <TableCell>{index + 1}</TableCell>
                             <TableCell className="font-medium">{student.lastName}</TableCell>
@@ -123,7 +123,7 @@ export default async function ClassesPage({ searchParams }: { searchParams: Sear
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {currentClass.subjects.map(subject => (
+                        {currentClass.subjects?.map(subject => (
                           <TableRow key={subject.id}>
                             <TableCell className="font-medium">{subject.name}</TableCell>
                             <TableCell className="text-right">

@@ -225,7 +225,7 @@ export function GradebookTable({ students, lessons, grades, subjectId }: Gradebo
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {students.map(student => (
+                        {students?.map(student => (
                             <TableRow key={student.id}>
                                 <TableCell className="sticky left-0 bg-background min-w-[200px] z-10 border-r">
                                     <div className="flex items-center gap-2">
@@ -263,4 +263,3 @@ export function GradebookTable({ students, lessons, grades, subjectId }: Gradebo
         </TooltipProvider>
     );
 }
-

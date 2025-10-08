@@ -11,7 +11,7 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
     const allClasses = await db.query.classes.findMany({
         with: {
             subjects: true,
-            students: true, // Eagerly load students for all classes
+            students: true,
         }
     });
 
@@ -28,10 +28,24 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
     
     const currentClass = allClasses.find(c => c.id === selectedClassId);
 
+    // Ensure currentClass exists before proceeding
+    if (!currentClass) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Ошибка</CardTitle>
+                    <CardDescription>Выбранный класс не найден.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">Пожалуйста, выберите другой класс.</p>
+                </CardContent>
+            </Card>
+        )
+    }
+
     const selectedSubjectId = searchParams.subjectId 
         ? parseInt(searchParams.subjectId)
-        // Ensure that a valid subject is selected if the class changes
-        : currentClass?.subjects[0]?.id;
+        : currentClass.subjects?.[0]?.id;
 
     let currentLessons: (typeof lessonsTable.$inferSelect)[] = [];
     if (selectedSubjectId) {
@@ -41,7 +55,8 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
         });
     }
 
-    const studentIds = currentClass?.students?.map(s => s.id) ?? [];
+    const studentsWithGrades = currentClass.students ?? [];
+    const studentIds = studentsWithGrades.map(s => s.id);
     const lessonIds = currentLessons.map(l => l.id);
 
     let currentGrades: (typeof gradesTable.$inferSelect)[] = [];
@@ -54,8 +69,6 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
         });
     }
 
-    const studentsWithGrades = currentClass?.students ?? [];
-
     return (
         <div className="flex flex-col h-full">
             <GradebookController 
@@ -65,7 +78,7 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
                 selectedSubjectId={selectedSubjectId}
             />
             <div className="flex-1 overflow-auto">
-                 {!currentClass || currentClass.subjects.length === 0 ? (
+                 {!currentClass.subjects || currentClass.subjects.length === 0 ? (
                     <Card>
                         <CardHeader>
                             <CardTitle>Нет предметов</CardTitle>
@@ -106,3 +119,4 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
         </div>
     );
 }
+
