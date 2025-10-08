@@ -296,6 +296,20 @@ export async function createLesson(subjectId: number) {
     }
 }
 
+export async function deleteLesson(lessonId: number) {
+    try {
+        // First delete all grades associated with this lesson
+        await db.delete(grades).where(eq(grades.lessonId, lessonId));
+        // Then delete the lesson itself
+        await db.delete(lessons).where(eq(lessons.id, lessonId));
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete lesson:", error);
+        return { error: "Не удалось удалить урок." };
+    }
+}
+
 
 const GradeSchema = z.object({
   gradeId: z.coerce.number(),
@@ -426,5 +440,3 @@ export async function exportData(format: 'json' | 'csv') {
         return { error: "Не удалось подготовить данные для экспорта." };
     }
 }
-
-    

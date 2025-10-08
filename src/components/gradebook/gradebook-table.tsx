@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StudentIcon } from "../icons/student";
 import { EditLessonDialog } from "./edit-lesson-dialog";
 import { EditGradeDialog } from "./edit-grade-dialog";
-import { Send, Check, X, Clock, MessageSquare, Paperclip, PlusCircle } from "lucide-react";
+import { Send, Check, X, Clock, MessageSquare, Paperclip, PlusCircle, Trash2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, AlertDialogFooter } from "../ui/alert-dialog";
 import { Textarea } from "../ui/textarea";
@@ -14,7 +14,7 @@ import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import React from "react";
-import { createLesson, sendMessage } from "@/lib/actions";
+import { createLesson, sendMessage, deleteLesson } from "@/lib/actions";
 
 type GradebookTableProps = {
     students: Student[];
@@ -179,6 +179,41 @@ const AddLessonButton = ({ subjectId }: { subjectId: number }) => {
     );
 };
 
+const DeleteLessonButton = ({ lessonId, lessonDate }: { lessonId: number, lessonDate: string }) => {
+    const { toast } = useToast();
+    const handleDelete = async () => {
+        const result = await deleteLesson(lessonId);
+        if (result?.error) {
+            toast({ variant: 'destructive', title: 'Ошибка', description: result.error });
+        } else {
+            toast({ title: 'Урок удален' });
+        }
+    };
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                 <Button variant="ghost" size="icon" className="h-6 w-6 absolute top-1 right-1" onClick={e => e.stopPropagation()}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Это действие навсегда удалит урок от {lessonDate} и все связанные с ним оценки.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Отмена</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Удалить
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+}
 
 export function GradebookTable({ students, lessons, grades, subjectId }: GradebookTableProps) {
 
@@ -198,10 +233,11 @@ export function GradebookTable({ students, lessons, grades, subjectId }: Gradebo
                                 <TableHead 
                                     key={lesson.id} 
                                     className={cn(
-                                        "min-w-[200px] text-center p-0 border-l",
+                                        "min-w-[200px] text-center p-0 border-l relative",
                                         lesson.lessonType !== 'Default' && 'bg-green-100 dark:bg-green-900/30'
                                     )}
                                 >
+                                     <DeleteLessonButton lessonId={lesson.id} lessonDate={formatDate(lesson.date)} />
                                     <EditLessonDialog lesson={lesson}>
                                         <div className="cursor-pointer h-full p-2 flex flex-col justify-between hover:bg-muted/80">
                                             <div className="font-bold text-sm">{formatDate(lesson.date)}</div>

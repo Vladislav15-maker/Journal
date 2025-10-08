@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useActionState } from "react";
@@ -29,7 +30,7 @@ export function LoginForm() {
         <Input
           id="email"
           name="email"
-          placeholder="Vladislav"
+          placeholder="Введите ваш логин"
           required
         />
       </div>
