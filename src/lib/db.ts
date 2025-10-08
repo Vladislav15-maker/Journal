@@ -10,5 +10,3 @@ if (!process.env.POSTGRES_URL) {
 const sql = neon(process.env.POSTGRES_URL);
 
 export const db = drizzle(sql, { schema });
-
-    

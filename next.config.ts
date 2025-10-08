@@ -1,8 +1,5 @@
 
 import type {NextConfig} from 'next';
-// Do not remove the following line
-// import 'dotenv/config';
-
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -37,5 +34,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
-    
