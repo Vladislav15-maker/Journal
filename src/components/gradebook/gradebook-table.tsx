@@ -1,4 +1,6 @@
 
+'use client';
+
 import { Student, Lesson, Grade, LessonType, lessonTypeTranslations } from "@/lib/definitions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StudentIcon } from "../icons/student";
@@ -263,3 +265,5 @@ export function GradebookTable({ students, lessons, grades, subjectId }: Gradebo
         </TooltipProvider>
     );
 }
+
+    

@@ -115,3 +115,5 @@ export const messages = pgTable('messages', {
     message: text('message').notNull(),
     timestamp: timestamp('timestamp', { mode: 'date' }).notNull().defaultNow(),
 });
+
+    
