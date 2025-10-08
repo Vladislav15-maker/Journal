@@ -1,10 +1,19 @@
-import { pgTable, serial, varchar, integer, text, date as pgDate, uniqueIndex } from 'drizzle-orm/pg-core';
+
+import { pgTable, serial, varchar, integer, text, date as pgDate, uniqueIndex, relations } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
 
 // Таблица классов
 export const classes = pgTable('classes', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 256 }).notNull().unique(),
 });
+
+export const classesRelations = relations(classes, ({ many }) => ({
+	students: many(students),
+    subjects: many(subjects),
+}));
+
 
 // Таблица учеников
 export const students = pgTable('students', {
@@ -13,6 +22,15 @@ export const students = pgTable('students', {
   lastName: varchar('last_name', { length: 256 }).notNull(),
   classId: integer('class_id').references(() => classes.id, { onDelete: 'cascade' }).notNull(),
 });
+
+export const studentsRelations = relations(students, ({ one, many }) => ({
+	class: one(classes, {
+		fields: [students.classId],
+		references: [classes.id],
+	}),
+    grades: many(grades),
+}));
+
 
 // Таблица предметов
 export const subjects = pgTable('subjects', {
@@ -24,6 +42,15 @@ export const subjects = pgTable('subjects', {
         nameClassIdUnq: uniqueIndex('name_class_id_unq').on(table.name, table.classId),
     };
 });
+
+export const subjectsRelations = relations(subjects, ({ one, many }) => ({
+	class: one(classes, {
+		fields: [subjects.classId],
+		references: [classes.id],
+	}),
+    lessons: many(lessons),
+}));
+
 
 // Таблица расписания
 export const scheduleItems = pgTable('schedule_items', {
@@ -38,12 +65,21 @@ export const scheduleItems = pgTable('schedule_items', {
 export const lessons = pgTable('lessons', {
   id: serial('id').primaryKey(),
   subjectId: integer('subject_id').references(() => subjects.id, { onDelete: 'cascade' }).notNull(),
-  date: pgDate('date').notNull(),
+  date: pgDate('date', { mode: 'date' }).notNull(),
   topic: text('topic').notNull().default('Тема не задана'),
   homework: text('homework').notNull().default(''),
   lessonType: varchar('lesson_type', { length: 50 }).notNull().default('Default'),
   maxPoints: integer('max_points'),
 });
+
+export const lessonsRelations = relations(lessons, ({ one, many }) => ({
+	subject: one(subjects, {
+		fields: [lessons.subjectId],
+		references: [subjects.id],
+	}),
+    grades: many(grades),
+}));
+
 
 // Таблица оценок
 export const grades = pgTable('grades', {
@@ -53,7 +89,23 @@ export const grades = pgTable('grades', {
     grade: integer('grade'),
     attendance: varchar('attendance', { length: 50 }).notNull().default('present'),
     comment: text('comment'),
+}, (table) => {
+    return {
+        studentLessonUnq: uniqueIndex('student_lesson_unq').on(table.studentId, table.lessonId),
+    };
 });
+
+export const gradesRelations = relations(grades, ({ one }) => ({
+	student: one(students, {
+		fields: [grades.studentId],
+		references: [students.id],
+	}),
+    lesson: one(lessons, {
+        fields: [grades.lessonId],
+		references: [lessons.id],
+    })
+}));
+
 
 // Таблица сообщений
 export const messages = pgTable('messages', {

@@ -1,21 +1,18 @@
 
-export type Student = {
-    id: string;
-    firstName: string;
-    lastName: string;
-};
 
-export type Subject = {
-    id: string;
-    name: string;
-};
+import type { classes, students, subjects, lessons, grades, scheduleItems, messages } from './schema';
 
-export type Class = {
-    id: string;
-    name: string;
+export type Student = typeof students.$inferSelect;
+export type Subject = typeof subjects.$inferSelect;
+export type Class = typeof classes.$inferSelect & {
     students: Student[];
     subjects: Subject[];
 };
+export type Lesson = typeof lessons.$inferSelect;
+export type Grade = typeof grades.$inferSelect;
+export type ScheduleItem = typeof scheduleItems.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+
 
 export type LessonType = 'Class Work' | 'Independent Work' | 'Project Work' | 'SOR' | 'SOCH' | 'Default';
 
@@ -30,15 +27,6 @@ export const lessonTypeTranslations: Record<LessonType, string> = {
     'SOCH': 'СОЧ (Суммативное оценивание за четверть)',
 };
 
-export type Lesson = {
-    id: string;
-    subjectId: string;
-    date: string; // YYYY-MM-DD
-    topic: string;
-    homework: string;
-    lessonType: LessonType;
-    maxPoints?: number;
-};
 
 export type AttendanceStatus = 'present' | 'absent' | 'excused';
 
@@ -48,38 +36,4 @@ export const attendanceStatusTranslations: Record<AttendanceStatus, string> = {
     'present': 'Присутствовал',
     'absent': 'Отсутствовал',
     'excused': 'Отсутствовал по ув. причине',
-};
-
-export type Grade = {
-    id: string;
-    studentId: string;
-    lessonId: string;
-    grade?: number;
-    attendance: AttendanceStatus;
-    comment?: string;
-};
-
-export type SentMessage = {
-    id: string;
-    recipientId: string;
-    recipientName: string;
-    recipientType: 'class' | 'student';
-    message: string;
-    timestamp: string;
-};
-
-export type ScheduleItem = {
-    id: string;
-    classId: string;
-    dayOfWeek: string; // e.g., "Понедельник"
-    lessonNumber: number;
-    subjectId: string;
-};
-
-export type AppData = {
-    classes: Class[];
-    lessons: Lesson[];
-    grades: Grade[];
-    schedule: ScheduleItem[];
-    // messages will be handled in component state
 };

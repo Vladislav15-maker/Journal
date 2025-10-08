@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StudentIcon } from "../icons/student";
 import { EditLessonDialog } from "./edit-lesson-dialog";
 import { EditGradeDialog } from "./edit-grade-dialog";
-import { Send, Check, X, Clock, MessageSquare, Paperclip } from "lucide-react";
+import { Send, Check, X, Clock, MessageSquare, Paperclip, PlusCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, AlertDialogFooter } from "../ui/alert-dialog";
 import { Textarea } from "../ui/textarea";
@@ -12,17 +12,17 @@ import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import React from "react";
+import { createLesson, sendMessage } from "@/lib/actions";
 
 type GradebookTableProps = {
     students: Student[];
     lessons: Lesson[];
     grades: Grade[];
-    onUpdateLesson: (lesson: Lesson) => void;
-    onUpdateGrade: (grade: Grade) => void;
+    subjectId: number;
 };
 
 const getGradeColorClass = (grade: number | undefined, maxPoints: number | undefined): string => {
-    if (grade === undefined) return '';
+    if (grade === undefined || grade === null) return '';
 
     const effectiveMax = maxPoints ?? 10;
     const percentage = (grade / effectiveMax) * 100;
@@ -39,13 +39,13 @@ const getGradeColorClass = (grade: number | undefined, maxPoints: number | undef
         if (grade >= 8) return 'text-orange-500';
         return 'text-red-600';
     }
-     if (effectiveMax === 20) { // Specific for SOR=20 in data
-        if (grade >= 18) return 'text-green-500 font-bold'; // 90%+
-        if (grade >= 16) return 'text-green-600'; // 80-89%
-        if (grade >= 10) return 'text-orange-500'; // 50-79%
-        return 'text-red-600'; // < 50%
+     if (effectiveMax === 20) {
+        if (grade >= 18) return 'text-green-500 font-bold';
+        if (grade >= 16) return 'text-green-600';
+        if (grade >= 10) return 'text-orange-500';
+        return 'text-red-600';
     }
-    if (effectiveMax === 40) { // SOCH
+    if (effectiveMax === 40) {
         if (grade >= 36) return 'text-green-500 font-bold';
         if (grade >= 27) return 'text-green-600';
         if (grade >= 12) return 'text-orange-500';
@@ -58,7 +58,6 @@ const getGradeColorClass = (grade: number | undefined, maxPoints: number | undef
         return 'text-red-600';
     }
 
-    // Fallback based on percentage if no specific maxPoints match
     if (percentage >= 85) return 'text-green-500 font-bold';
     if (percentage >= 65) return 'text-green-600';
     if (percentage >= 40) return 'text-orange-500';
@@ -99,14 +98,24 @@ const CommentDialog = ({ comment }: { comment: string }) => {
 };
 
 
-const SendMessageDialog = ({ student, onSend }: { student: Student, onSend: (message: string) => void }) => {
+const SendMessageDialog = ({ student }: { student: Student }) => {
     const [message, setMessage] = React.useState('');
     const [isOpen, setIsOpen] = React.useState(false);
+    const { toast } = useToast();
 
-    const handleSend = () => {
-        onSend(message);
-        setIsOpen(false);
-        setMessage('');
+    const handleSend = async () => {
+        const formData = new FormData();
+        formData.append('recipient', `student-${student.id}`);
+        formData.append('message', message);
+        const result = await sendMessage(formData);
+
+        if (result?.error) {
+             toast({ variant: 'destructive', title: "Ошибка", description: result.error });
+        } else {
+             toast({ title: "Сообщение отправлено", description: `Сообщение для ${student.firstName} ${student.lastName} отправлено.` });
+            setIsOpen(false);
+            setMessage('');
+        }
     }
 
     return (
@@ -142,23 +151,40 @@ const SendMessageDialog = ({ student, onSend }: { student: Student, onSend: (mes
     )
 }
 
-export function GradebookTable({ students, lessons, grades, onUpdateLesson, onUpdateGrade }: GradebookTableProps) {
+const AddLessonButton = ({ subjectId }: { subjectId: number }) => {
     const { toast } = useToast();
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString + 'T00:00:00Z');
+    const handleAddLesson = async () => {
+        const result = await createLesson(subjectId);
+        if (result.error) {
+            toast({ variant: 'destructive', title: "Ошибка", description: result.error });
+        } else {
+            toast({ title: "Урок создан", description: "Новый урок добавлен в журнал." });
+        }
+    };
+
+    return (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-full w-14 rounded-none border-l-2 border-dashed" onClick={handleAddLesson}>
+                    <PlusCircle />
+                </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+                <p>Добавить новый урок</p>
+            </TooltipContent>
+        </Tooltip>
+    );
+};
+
+
+export function GradebookTable({ students, lessons, grades, subjectId }: GradebookTableProps) {
+
+    const formatDate = (dateString: string | Date) => {
+        const date = new Date(dateString);
         return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
     }
     
-    const handleSendMessage = (studentName: string, message: string) => {
-        // Mock sending message
-        console.log(`Sending message to ${studentName}: ${message}`);
-        toast({
-            title: "Сообщение отправлено",
-            description: `Сообщение для ${studentName} отправлено.`,
-        });
-    };
-
     return (
         <TooltipProvider>
             <div className="w-full overflow-x-auto">
@@ -174,13 +200,13 @@ export function GradebookTable({ students, lessons, grades, onUpdateLesson, onUp
                                         lesson.lessonType !== 'Default' && 'bg-green-100 dark:bg-green-900/30'
                                     )}
                                 >
-                                    <EditLessonDialog lesson={lesson} onUpdateLesson={onUpdateLesson}>
+                                    <EditLessonDialog lesson={lesson}>
                                         <div className="cursor-pointer h-full p-2 flex flex-col justify-between hover:bg-muted/80">
                                             <div className="font-bold text-sm">{formatDate(lesson.date)}</div>
                                             <div className="text-xs font-normal text-muted-foreground mt-1 text-wrap">
                                                 <p>
                                                     {lesson.topic}
-                                                    {lesson.lessonType !== 'Default' && ` (${lessonTypeTranslations[lesson.lessonType]})`}
+                                                    {lesson.lessonType !== 'Default' && ` (${lessonTypeTranslations[lesson.lessonType as LessonType]})`}
                                                 </p>
                                                 {lesson.maxPoints && (
                                                     <p className="font-semibold text-accent">Max: {lesson.maxPoints}</p>
@@ -193,6 +219,9 @@ export function GradebookTable({ students, lessons, grades, onUpdateLesson, onUp
                                     </EditLessonDialog>
                                 </TableHead>
                             ))}
+                            <TableHead className="sticky right-0 bg-background z-20 p-0">
+                                <AddLessonButton subjectId={subjectId} />
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -202,21 +231,18 @@ export function GradebookTable({ students, lessons, grades, onUpdateLesson, onUp
                                     <div className="flex items-center gap-2">
                                         <StudentIcon className="h-6 w-6 text-muted-foreground" />
                                         <span>{student.lastName} {student.firstName}</span>
-                                        <SendMessageDialog 
-                                            student={student} 
-                                            onSend={(message) => handleSendMessage(`${student.firstName} ${student.lastName}`, message)} 
-                                        />
+                                        <SendMessageDialog student={student} />
                                     </div>
                                 </TableCell>
                                 {lessons.map(lesson => {
                                     const grade = grades.find(g => g.studentId === student.id && g.lessonId === lesson.id);
                                     if (!grade) return <TableCell key={`${student.id}-${lesson.id}`} className="border-l"></TableCell>;
                                     
-                                    const gradeColorClass = getGradeColorClass(grade.grade, lesson.maxPoints);
+                                    const gradeColorClass = getGradeColorClass(grade.grade ?? undefined, lesson.maxPoints ?? undefined);
 
                                     return (
                                         <TableCell key={grade.id} className="text-center p-0 border-l">
-                                            <EditGradeDialog grade={grade} lesson={lesson} onUpdateGrade={onUpdateGrade}>
+                                            <EditGradeDialog grade={grade} lesson={lesson}>
                                                 <div className="cursor-pointer h-full w-full p-2 flex items-center justify-center gap-2 hover:bg-muted/80 min-h-[60px]">
                                                     <span className={cn("font-bold text-base", gradeColorClass)}>{grade.grade ?? ''}</span>
                                                     <AttendanceIcon status={grade.attendance} />
@@ -228,6 +254,7 @@ export function GradebookTable({ students, lessons, grades, onUpdateLesson, onUp
                                         </TableCell>
                                     );
                                 })}
+                                 <TableCell className="sticky right-0 bg-background z-10 border-l"></TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -237,4 +264,3 @@ export function GradebookTable({ students, lessons, grades, onUpdateLesson, onUp
     );
 }
 
-    

@@ -1,102 +1,104 @@
 
-"use client";
-
-import React, { useState, useMemo, useEffect } from 'react';
-import { AppData, Class, Grade, Lesson, Subject } from '@/lib/definitions';
-import { initialData } from '@/lib/data';
 import { GradebookTable } from '@/components/gradebook/gradebook-table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { db } from '@/lib/db';
+import { classes, subjects as subjectsTable, lessons as lessonsTable, grades as gradesTable } from '@/lib/schema';
+import { eq, and, inArray } from 'drizzle-orm';
+import { GradebookController } from './_components/gradebook-controller';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
-export default function GradebookPage() {
-    const [data, setData] = useState<AppData>(initialData);
+export default async function GradebookPage({ searchParams }: { searchParams: { classId?: string; subjectId?: string }}) {
     
-    const [selectedClassId, setSelectedClassId] = useState<string>(data.classes.length > 0 ? data.classes[0].id : '');
-    
-    const selectedClass = useMemo(() => data.classes.find(c => c.id === selectedClassId)!, [data.classes, selectedClassId]);
-
-    const [selectedSubjectId, setSelectedSubjectId] = useState<string>(selectedClass?.subjects.length > 0 ? selectedClass.subjects[0].id : '');
-    
-    useEffect(() => {
-        if (selectedClass) {
-            setSelectedSubjectId(selectedClass.subjects.length > 0 ? selectedClass.subjects[0].id : '');
+    const allClasses = await db.query.classes.findMany({
+        with: {
+            subjects: true,
         }
-    }, [selectedClass]);
+    });
 
-
-    const handleClassChange = (classId: string) => {
-        setSelectedClassId(classId);
-    };
-    
-    const handleUpdateLesson = (updatedLesson: Lesson) => {
-        setData(prevData => ({
-            ...prevData,
-            lessons: prevData.lessons.map(l => l.id === updatedLesson.id ? updatedLesson : l)
-        }));
-    };
-
-    const handleUpdateGrade = (updatedGrade: Grade) => {
-        setData(prevData => ({
-            ...prevData,
-            grades: prevData.grades.map(g => g.id === updatedGrade.id ? updatedGrade : g)
-        }));
-    };
-
-    const currentStudents = selectedClass?.students ?? [];
-    const currentLessons = data.lessons.filter(l => l.subjectId === selectedSubjectId);
-    const currentGrades = data.grades.filter(g => currentLessons.some(l => l.id === g.lessonId) && currentStudents.some(s => s.id === g.studentId));
-
-    if (data.classes.length === 0) {
+    if (allClasses.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                <h2 className="text-2xl font-semibold mb-2">Нет доступных классов</h2>
-                <p>Пожалуйста, создайте класс на странице "Мои классы", чтобы начать работу.</p>
+             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                <h2 className="text-2xl font-semibold mb-2">Добро пожаловать в GradeBook Pro!</h2>
+                <p>Похоже, у вас еще нет ни одного класса. <br/> Пожалуйста, создайте класс на странице "Мои классы", чтобы начать работу.</p>
             </div>
         )
     }
 
+    const selectedClassId = searchParams.classId ? parseInt(searchParams.classId) : allClasses[0].id;
+    
+    const currentClass = allClasses.find(c => c.id === selectedClassId);
+
+    const selectedSubjectId = searchParams.subjectId 
+        ? parseInt(searchParams.subjectId)
+        : currentClass?.subjects[0]?.id;
+
+    let currentLessons: (typeof lessonsTable.$inferSelect)[] = [];
+    if (selectedSubjectId) {
+        currentLessons = await db.query.lessons.findMany({
+            where: eq(lessonsTable.subjectId, selectedSubjectId),
+            orderBy: (lessons, { asc }) => [asc(lessons.date)],
+        });
+    }
+
+    const studentIds = currentClass?.students.map(s => s.id) ?? [];
+    const lessonIds = currentLessons.map(l => l.id) ?? [];
+
+    let currentGrades: (typeof gradesTable.$inferSelect)[] = [];
+    if (studentIds.length > 0 && lessonIds.length > 0) {
+        currentGrades = await db.query.grades.findMany({
+            where: and(
+                inArray(gradesTable.studentId, studentIds),
+                inArray(gradesTable.lessonId, lessonIds)
+            )
+        });
+    }
+
+    const studentsWithGrades = currentClass?.students ?? [];
+
     return (
         <div className="flex flex-col h-full">
-            <div className="flex items-center gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-muted-foreground">Класс:</span>
-                    <Select value={selectedClassId} onValueChange={handleClassChange}>
-                        <SelectTrigger className="w-[120px]">
-                            <SelectValue placeholder="Выберите класс" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {data.classes.map((c: Class) => (
-                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-muted-foreground">Предмет:</span>
-                    <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId} disabled={!selectedClass || selectedClass.subjects.length === 0}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Выберите предмет" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {selectedClass?.subjects.map((s: Subject) => (
-                                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
+            <GradebookController 
+                allClasses={allClasses} 
+                currentClass={currentClass}
+                selectedClassId={selectedClassId}
+                selectedSubjectId={selectedSubjectId}
+            />
             <div className="flex-1 overflow-auto">
-                {currentStudents.length > 0 && currentLessons.length > 0 ? (
+                 {!currentClass || currentClass.subjects.length === 0 ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Нет предметов</CardTitle>
+                            <CardDescription>В этом классе еще нет предметов.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-muted-foreground">Пожалуйста, добавьте хотя бы один предмет на странице "Мои классы", чтобы начать вести журнал.</p>
+                        </CardContent>
+                    </Card>
+                ) : !selectedSubjectId ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Предмет не выбран</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-muted-foreground">Пожалуйста, выберите предмет для просмотра журнала.</p>
+                        </CardContent>
+                    </Card>
+                ) : studentsWithGrades.length === 0 ? (
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Нет учеников</CardTitle>
+                            <CardDescription>В этом классе еще нет учеников.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-muted-foreground">Пожалуйста, добавьте учеников на странице "Мои классы".</p>
+                        </CardContent>
+                    </Card>
+                ) : (
                     <GradebookTable
-                        students={currentStudents}
+                        students={studentsWithGrades}
                         lessons={currentLessons}
                         grades={currentGrades}
-                        onUpdateLesson={handleUpdateLesson}
-                        onUpdateGrade={handleUpdateGrade}
+                        subjectId={selectedSubjectId}
                     />
-                ) : (
-                    <div className="flex items-center justify-center h-full text-center text-muted-foreground">
-                        <p>Для выбранного класса нет учеников или уроков. <br /> Добавьте их на странице "Мои классы" и "Расписание".</p>
-                    </div>
                 )}
             </div>
         </div>
