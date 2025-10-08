@@ -31,7 +31,6 @@ export function LoginForm() {
           name="email"
           placeholder="Vladislav"
           required
-          defaultValue="Vladislav"
         />
       </div>
       <div className="space-y-2">
@@ -41,7 +40,6 @@ export function LoginForm() {
           name="password"
           type="password"
           required
-          defaultValue="Vladislav15"
         />
       </div>
       {state.message && (
