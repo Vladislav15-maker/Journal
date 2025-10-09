@@ -269,14 +269,14 @@ export async function deleteMessage(messageId: number) {
 }
 
 // --- Gradebook Actions ---
-export async function createLesson(subjectId: number) {
+export async function createLesson(subjectId: number, date: Date) {
     try {
         const subject = await db.query.subjects.findFirst({ where: eq(subjects.id, subjectId), with: { class: { with: { students: true } } } });
         if (!subject) {
             return { error: 'Предмет не найден' };
         }
 
-        const newLesson = await db.insert(lessons).values({ subjectId, date: new Date() }).returning({ id: lessons.id });
+        const newLesson = await db.insert(lessons).values({ subjectId, date }).returning({ id: lessons.id });
         const lessonId = newLesson[0].id;
         
         // For each student in the class, create a new grade entry

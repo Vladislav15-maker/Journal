@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StudentIcon } from "../icons/student";
 import { EditLessonDialog } from "./edit-lesson-dialog";
 import { EditGradeDialog } from "./edit-grade-dialog";
-import { Send, Check, X, Clock, MessageSquare, Paperclip, PlusCircle, Trash2 } from "lucide-react";
+import { Send, Check, X, Clock, MessageSquare, Paperclip, PlusCircle, Trash2, CalendarIcon as CalendarLucideIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, AlertDialogFooter } from "../ui/alert-dialog";
 import { Textarea } from "../ui/textarea";
@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import React from "react";
 import { createLesson, sendMessage, deleteLesson } from "@/lib/actions";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 type GradebookTableProps = {
     students: Student[];
@@ -155,29 +157,52 @@ const SendMessageDialog = ({ student }: { student: Student }) => {
 
 const AddLessonButton = ({ subjectId }: { subjectId: number }) => {
     const { toast } = useToast();
+    const [date, setDate] = React.useState<Date | undefined>(new Date());
+    const [isOpen, setIsOpen] = React.useState(false);
 
     const handleAddLesson = async () => {
-        const result = await createLesson(subjectId);
+        if (!date) {
+            toast({ variant: 'destructive', title: "Ошибка", description: "Пожалуйста, выберите дату." });
+            return;
+        }
+        const result = await createLesson(subjectId, date);
         if (result.error) {
             toast({ variant: 'destructive', title: "Ошибка", description: result.error });
         } else {
             toast({ title: "Урок создан", description: "Новый урок добавлен в журнал." });
+            setIsOpen(false);
         }
     };
 
     return (
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="h-full w-14 rounded-none border-l-2 border-dashed" onClick={handleAddLesson}>
-                    <PlusCircle />
-                </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-                <p>Добавить новый урок</p>
-            </TooltipContent>
-        </Tooltip>
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <PopoverTrigger asChild>
+                         <Button variant="outline" size="icon" className="h-full w-14 rounded-none border-l-2 border-dashed">
+                            <PlusCircle />
+                        </Button>
+                    </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>Добавить новый урок</p>
+                </TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    initialFocus
+                />
+                <div className="p-2 border-t text-center">
+                     <Button onClick={handleAddLesson} disabled={!date} className="w-full">Создать урок</Button>
+                </div>
+            </PopoverContent>
+        </Popover>
     );
 };
+
 
 const DeleteLessonButton = ({ lessonId, lessonDate }: { lessonId: number, lessonDate: string }) => {
     const { toast } = useToast();
@@ -301,5 +326,3 @@ export function GradebookTable({ students, lessons, grades, subjectId }: Gradebo
         </TooltipProvider>
     );
 }
-
-    
