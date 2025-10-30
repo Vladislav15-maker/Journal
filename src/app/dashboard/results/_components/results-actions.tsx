@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PlusCircle, Trash2, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { addAcademicYear, setFinalGrade, deleteAcademicYear, addQuarter } from '@/lib/actions';
+import { addAcademicYear, setFinalGrade, deleteAcademicYear, addQuarter, deleteQuarter } from '@/lib/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FinalGrade, Quarter } from '@/lib/definitions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -139,7 +139,7 @@ export function AddQuarterDialog({ academicYearId }: { academicYearId: number })
         <form ref={formRef} action={handleAction} className="space-y-4">
             <div className="space-y-2">
                 <Label htmlFor="name">Название</Label>
-                <Select name="name">
+                <Select name="name" required>
                     <SelectTrigger id="name">
                         <SelectValue placeholder="Выберите название" />
                     </SelectTrigger>
@@ -160,7 +160,7 @@ export function AddQuarterDialog({ academicYearId }: { academicYearId: number })
                         className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}
                         >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {startDate ? format(startDate, "PPP") : <span>Выберите дату</span>}
+                        {startDate ? format(startDate, "PPP", { locale: require('date-fns/locale/ru') }) : <span>Выберите дату</span>}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -177,7 +177,7 @@ export function AddQuarterDialog({ academicYearId }: { academicYearId: number })
                         className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}
                         >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {endDate ? format(endDate, "PPP") : <span>Выберите дату</span>}
+                        {endDate ? format(endDate, "PPP", { locale: require('date-fns/locale/ru') }) : <span>Выберите дату</span>}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -230,6 +230,43 @@ export function DeleteYearButton({ yearId, yearName }: { yearId: number, yearNam
         </AlertDialog>
     );
 }
+
+export function DeleteQuarterButton({ quarterId, quarterName }: { quarterId: number, quarterName: string }) {
+    const { toast } = useToast();
+    const handleDelete = async () => {
+        const result = await deleteQuarter(quarterId);
+        if (result?.error) {
+            toast({ variant: 'destructive', title: 'Ошибка', description: result.error });
+        } else {
+            toast({ title: 'Четверть удалена' });
+        }
+    };
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-5 w-5">
+                    <Trash2 className="h-3 w-3 text-destructive" />
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Это действие навсегда удалит четверть "{quarterName}" и все связанные с ней итоговые оценки.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Отмена</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Удалить
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+}
+
 
 export function GradeSelector({
   studentId,

@@ -418,14 +418,10 @@ const QuarterSchema = z.object({
 });
 
 export async function addQuarter(formData: FormData) {
-  const validatedFields = QuarterSchema.safeParse({
-    name: formData.get('name'),
-    academicYearId: formData.get('academicYearId'),
-    startDate: formData.get('startDate'),
-    endDate: formData.get('endDate'),
-  });
+  const validatedFields = QuarterSchema.safeParse(Object.fromEntries(formData.entries()));
 
   if (!validatedFields.success) {
+    console.log(validatedFields.error.flatten().fieldErrors);
     return { error: "Неверные данные. Убедитесь, что все поля заполнены." };
   }
   
@@ -456,6 +452,18 @@ export async function deleteAcademicYear(yearId: number) {
     } catch (error) {
         console.error("Failed to delete academic year:", error);
         return { error: "Не удалось удалить учебный год." };
+    }
+}
+
+export async function deleteQuarter(quarterId: number) {
+    try {
+        await db.delete(finalGrades).where(and(eq(finalGrades.periodType, 'quarter'), eq(finalGrades.academicPeriodId, quarterId)));
+        await db.delete(quarters).where(eq(quarters.id, quarterId));
+        revalidatePath('/dashboard/results');
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete quarter:", error);
+        return { error: "Не удалось удалить четверть." };
     }
 }
 

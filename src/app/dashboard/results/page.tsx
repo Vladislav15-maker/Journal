@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { Award, CalendarDays, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -8,7 +7,7 @@ import { db } from '@/lib/db';
 import { academicYears, classes, finalGrades, grades, lessons, quarters as quartersTable, subjects } from '@/lib/schema';
 import { and, eq, gte, lte, inArray, desc } from 'drizzle-orm';
 import { ResultsController } from './_components/results-controller';
-import { AddYearButton, GradeSelector, DeleteYearButton, AddQuarterDialog } from './_components/results-actions';
+import { AddYearButton, GradeSelector, DeleteYearButton, AddQuarterDialog, DeleteQuarterButton } from './_components/results-actions';
 import { Badge } from '@/components/ui/badge';
 import { Student, Quarter } from '@/lib/definitions';
 import Link from 'next/link';
@@ -31,9 +30,9 @@ type CalculatedResult = {
 
 function calculateQuarterlyPercentage(grades: (typeof grades.$inferSelect & { lesson: typeof lessons.$inferSelect })[]): number {
     const formativeGrades = grades.filter(g =>
-        (g.lesson.lessonType === 'Default' || g.lesson.lessonType === 'Class Work' || g.lesson.lessonType === 'Independent Work')
+        (g.lesson.lessonType === 'Default' || g.lesson.lessonType === 'Class Work' || g.lesson.lessonType === 'Independent Work' || g.lesson.lessonType === 'Project Work')
         && g.grade !== null && g.grade >= 0
-    ).sort((a, b) => b.grade! - a.grade!).slice(0, 10); // Берем до 10 лучших оценок
+    );
 
     const sorGrades = grades.filter(g => g.lesson.lessonType === 'SOR' && g.grade !== null && g.grade >= 0 && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
     const sochGrades = grades.filter(g => g.lesson.lessonType === 'SOCH' && g.grade !== null && g.grade >= 0 && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
@@ -202,7 +201,12 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                             <div className="pl-4 mt-2 space-y-1">
                                 <p className="text-xs font-semibold text-muted-foreground">Четверти:</p>
                                 {y.quarters.length > 0 ? y.quarters.map(q => (
-                                    <p key={q.id} className="text-sm">{q.name}</p>
+                                    <div key={q.id} className="group flex items-center justify-between text-sm">
+                                        <p>{q.name}</p>
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <DeleteQuarterButton quarterId={q.id} quarterName={q.name} />
+                                        </div>
+                                    </div>
                                 )) : (
                                     <p className="text-xs text-muted-foreground">Нет четвертей</p>
                                 )}
@@ -235,65 +239,68 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                         />
                     </div>
                    
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Ученик</TableHead>
-                                <TableHead className="text-center">Процент за {selectedQuarter?.name}</TableHead>
-                                {selectedYear?.quarters.map(q => (
-                                    <TableHead key={q.id} className="text-center">{q.name.replace('-я четверть', ' ч.')}</TableHead>
-                                ))}
-                                <TableHead className="text-center">Год</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {results.map(res => (
-                                <TableRow key={res.student.id}>
-                                    <TableCell className="font-medium">{res.student.lastName} {res.student.firstName}</TableCell>
-                                    <TableCell className="text-center">
-                                        {selectedQuarterId ? (
-                                            <Badge variant={res.totalPercentage >= 86 ? 'default' : res.totalPercentage >= 66 ? 'secondary' : res.totalPercentage >= 30 ? 'outline' : 'destructive'}>
-                                                {res.totalPercentage}%
-                                            </Badge>
-                                        ) : '---'}
-                                    </TableCell>
-                                    {selectedYear?.quarters.map((q) => {
-                                        const quarterKey = (q.name.match(/(\d)/)?.[0] ?? '') as '1' | '2' | '3' | '4';
-                                        return (
-                                            <TableCell key={q.id} className="text-center">
-                                                {selectedSubjectId ? (
-                                                    <GradeSelector 
-                                                        studentId={res.student.id}
-                                                        subjectId={selectedSubjectId}
-                                                        academicPeriodId={q.id}
-                                                        periodType='quarter'
-                                                        existingGradeValue={res.finalGrades[`q${quarterKey}`]}
-                                                    />
-                                                ) : '---'}
-                                            </TableCell>
-                                        )
-                                    })}
-                                    <TableCell className="text-center">
-                                        {selectedSubjectId ? (
-                                            <GradeSelector 
-                                                studentId={res.student.id}
-                                                subjectId={selectedSubjectId}
-                                                academicPeriodId={selectedYearId!}
-                                                periodType='year'
-                                                existingGradeValue={res.finalGrades.year}
-                                            />
-                                        ) : '---'}
-                                    </TableCell>
+                    <div className="border rounded-md overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="sticky left-0 bg-background z-10">Ученик</TableHead>
+                                    <TableHead className="text-center">Процент за {selectedQuarter?.name || 'четверть'}</TableHead>
+                                    {selectedYear?.quarters.map(q => (
+                                        <TableHead key={q.id} className="text-center">{q.name.replace('-я четверть', ' ч.')}</TableHead>
+                                    ))}
+                                    <TableHead className="text-center">Год</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {results.map(res => (
+                                    <TableRow key={res.student.id}>
+                                        <TableCell className="font-medium sticky left-0 bg-background z-10">{res.student.lastName} {res.student.firstName}</TableCell>
+                                        <TableCell className="text-center">
+                                            {selectedQuarterId ? (
+                                                <Badge variant={res.totalPercentage >= 86 ? 'default' : res.totalPercentage >= 66 ? 'secondary' : res.totalPercentage >= 30 ? 'outline' : 'destructive'}>
+                                                    {res.totalPercentage}%
+                                                </Badge>
+                                            ) : '---'}
+                                        </TableCell>
+                                        {selectedYear?.quarters.map((q) => {
+                                            const quarterNameMapping: {[key: string]: 'q1' | 'q2' | 'q3' | 'q4'} = {
+                                                "1-я четверть": 'q1', "2-я четверть": 'q2', "3-я четверть": 'q3', "4-я четверть": 'q4',
+                                            };
+                                            const quarterKey = quarterNameMapping[q.name];
+                                            return (
+                                                <TableCell key={q.id} className="text-center">
+                                                    {selectedSubjectId ? (
+                                                        <GradeSelector 
+                                                            studentId={res.student.id}
+                                                            subjectId={selectedSubjectId}
+                                                            academicPeriodId={q.id}
+                                                            periodType='quarter'
+                                                            existingGradeValue={quarterKey ? res.finalGrades[quarterKey] : null}
+                                                        />
+                                                    ) : '---'}
+                                                </TableCell>
+                                            )
+                                        })}
+                                        <TableCell className="text-center">
+                                            {selectedSubjectId ? (
+                                                <GradeSelector 
+                                                    studentId={res.student.id}
+                                                    subjectId={selectedSubjectId}
+                                                    academicPeriodId={selectedYearId!}
+                                                    periodType='year'
+                                                    existingGradeValue={res.finalGrades.year}
+                                                />
+                                            ) : '---'}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
         </div>
     );
 }
-
-
 
     
