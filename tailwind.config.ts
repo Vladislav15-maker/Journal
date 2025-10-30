@@ -45,6 +45,18 @@ export default {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
+        excellent: {
+          DEFAULT: "hsl(var(--excellent))",
+          foreground: "hsl(var(--excellent-foreground))",
+        },
+        good: {
+          DEFAULT: "hsl(var(--good))",
+          foreground: "hsl(var(--good-foreground))",
+        },
+        satisfactory: {
+          DEFAULT: "hsl(var(--satisfactory))",
+          foreground: "hsl(var(--satisfactory-foreground))",
+        },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',

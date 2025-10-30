@@ -24,6 +24,12 @@ body {
     --accent-foreground: 28 65% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
+    --excellent: 122 80% 85%;
+    --excellent-foreground: 122 40% 20%;
+    --good: 141 29% 34%;
+    --good-foreground: 141 29% 98%;
+    --satisfactory: 38 92% 50%;
+    --satisfactory-foreground: 38 92% 5%;
     --border: 140 10% 80%;
     --input: 140 10% 85%;
     --ring: 141 29% 34%;
@@ -59,6 +65,12 @@ body {
     --accent-foreground: 28 65% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
+    --excellent: 122 40% 20%;
+    --excellent-foreground: 122 80% 85%;
+    --good: 141 29% 80%;
+    --good-foreground: 141 29% 10%;
+    --satisfactory: 38 92% 30%;
+    --satisfactory-foreground: 38 92% 95%;
     --border: 141 20% 25%;
     --input: 141 20% 25%;
     --ring: 141 29% 80%;

@@ -1,7 +1,7 @@
 
 
 import React from 'react';
-import { Award, CalendarDays, Trash2 } from 'lucide-react';
+import { Award, CalendarDays, Trash2, Info } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { db } from '@/lib/db';
@@ -69,6 +69,13 @@ function calculateQuarterlyPercentage(grades: (typeof grades.$inferSelect & { le
     const totalPercentage = (formativeAveragePercentage * 0.10) + (sorAveragePercentage * 0.50) + (sochAveragePercentage * 0.40);
 
     return Math.round(totalPercentage);
+}
+
+const getBadgeVariant = (percentage: number): "excellent" | "good" | "satisfactory" | "destructive" => {
+    if (percentage >= 86) return 'excellent';
+    if (percentage >= 66) return 'good';
+    if (percentage >= 30) return 'satisfactory';
+    return 'destructive';
 }
 
 
@@ -241,6 +248,28 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                         />
                     </div>
                    
+                    <div className="mb-4 p-4 border rounded-lg bg-muted/50">
+                        <h4 className="flex items-center text-sm font-semibold mb-2"><Info className="h-4 w-4 mr-2"/> Легенда</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-xs">
+                           <div className="flex items-center gap-2">
+                                <div className="h-4 w-4 rounded-full bg-excellent"></div>
+                                <span><b>86-100%</b> - 5 (отлично)</span>
+                           </div>
+                           <div className="flex items-center gap-2">
+                                <div className="h-4 w-4 rounded-full bg-good"></div>
+                                <span><b>66-85%</b> - 4 (хорошо)</span>
+                           </div>
+                           <div className="flex items-center gap-2">
+                                <div className="h-4 w-4 rounded-full bg-satisfactory"></div>
+                                <span><b>30-65%</b> - 3 (удовл.)</span>
+                           </div>
+                           <div className="flex items-center gap-2">
+                                <div className="h-4 w-4 rounded-full bg-destructive"></div>
+                                <span><b>0-29%</b> - 2 (неуд.)</span>
+                           </div>
+                        </div>
+                    </div>
+                    
                     <div className="border rounded-md overflow-x-auto">
                         <Table>
                             <TableHeader>
@@ -259,7 +288,7 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                                         <TableCell className="font-medium sticky left-0 bg-background z-10">{res.student.lastName} {res.student.firstName}</TableCell>
                                         <TableCell className="text-center">
                                             {selectedQuarterId ? (
-                                                <Badge variant={res.totalPercentage >= 86 ? 'default' : res.totalPercentage >= 66 ? 'secondary' : res.totalPercentage >= 30 ? 'outline' : 'destructive'}>
+                                                <Badge variant={getBadgeVariant(res.totalPercentage)}>
                                                     {res.totalPercentage}%
                                                 </Badge>
                                             ) : '---'}
