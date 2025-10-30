@@ -480,20 +480,24 @@ export async function setFinalGrade(formData: FormData) {
     const validatedFields = FinalGradeSchema.safeParse(Object.fromEntries(formData.entries()));
 
     if (!validatedFields.success) {
+        console.error(validatedFields.error.flatten().fieldErrors);
         return { error: "Неверные данные для итоговой оценки." };
     }
 
     const { studentId, subjectId, academicPeriodId, periodType, grade } = validatedFields.data;
 
+    const quarterId = periodType === 'quarter' ? academicPeriodId : null;
+
     try {
         await db.insert(finalGrades)
-            .values({ studentId, subjectId, academicPeriodId, periodType, grade })
+            .values({ studentId, subjectId, academicPeriodId, periodType, grade, quarterId })
             .onConflictDoUpdate({
                 target: [finalGrades.studentId, finalGrades.subjectId, finalGrades.academicPeriodId, finalGrades.periodType],
                 set: { grade: grade }
             });
         
         revalidatePath('/dashboard/results');
+        revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
         console.error("Failed to set final grade:", error);

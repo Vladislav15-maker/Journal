@@ -47,6 +47,10 @@ body {
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    --grade-5: 122 39% 49%; /* Ярко-зеленый */
+    --grade-4: 141 29% 34%; /* Зеленый */
+    --grade-3: 38 92% 50%;  /* Оранжевый */
+    --grade-2: 0 84% 60%;   /* Красный */
   }
   .dark {
     --background: 141 29% 5%;
@@ -87,6 +91,10 @@ body {
     --sidebar-accent-foreground: 140 4.8% 95.9%;
     --sidebar-border: 141 20% 25%;
     --sidebar-ring: 141 29% 80%;
+    --grade-5: 122 39% 49%;
+    --grade-4: 141 29% 34%;
+    --grade-3: 38 92% 50%;
+    --grade-2: 0 84% 60%;
   }
 }
 

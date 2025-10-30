@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Student, Lesson, Grade, LessonType, lessonTypeTranslations } from "@/lib/definitions";
+import { Student, Lesson, Grade, FinalGrade, LessonType, lessonTypeTranslations } from "@/lib/definitions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StudentIcon } from "../icons/student";
 import { EditLessonDialog } from "./edit-lesson-dialog";
@@ -23,7 +23,9 @@ type GradebookTableProps = {
     students: Student[];
     lessons: Lesson[];
     grades: Grade[];
+    finalGrades: FinalGrade[];
     subjectId: number;
+    currentQuarterName?: string;
 };
 
 const getGradeColorClass = (grade: number | undefined, maxPoints: number | undefined): string => {
@@ -67,6 +69,14 @@ const getGradeColorClass = (grade: number | undefined, maxPoints: number | undef
     if (percentage >= 65) return 'text-green-600';
     if (percentage >= 40) return 'text-orange-500';
     return 'text-red-600';
+};
+
+const getFinalGradeColorClass = (grade: number) => {
+    if (grade === 5) return 'bg-grade-5 text-white';
+    if (grade === 4) return 'bg-grade-4 text-white';
+    if (grade === 3) return 'bg-grade-3 text-white';
+    if (grade === 2) return 'bg-grade-2 text-white';
+    return '';
 };
 
 
@@ -246,7 +256,7 @@ const DeleteLessonButton = ({ lessonId, lessonDate }: { lessonId: number, lesson
     );
 }
 
-export function GradebookTable({ students, lessons, grades, subjectId }: GradebookTableProps) {
+export function GradebookTable({ students, lessons, grades, finalGrades, subjectId, currentQuarterName }: GradebookTableProps) {
 
     const formatDate = (dateString: string | Date) => {
         const date = new Date(dateString);
@@ -290,6 +300,11 @@ export function GradebookTable({ students, lessons, grades, subjectId }: Gradebo
                                     </EditLessonDialog>
                                 </TableHead>
                             ))}
+                            {currentQuarterName && (
+                                 <TableHead className="min-w-[120px] text-center font-bold border-l-2 border-primary">
+                                     Итог за {currentQuarterName.replace('-я четверть', ' ч.')}
+                                 </TableHead>
+                            )}
                             <TableHead className="sticky right-0 bg-background z-20 p-0">
                                 <AddLessonButton subjectId={subjectId} />
                             </TableHead>
@@ -331,6 +346,19 @@ export function GradebookTable({ students, lessons, grades, subjectId }: Gradebo
                                         </TableCell>
                                     );
                                 })}
+                                {currentQuarterName && (
+                                    <TableCell className="text-center font-bold border-l-2 border-primary">
+                                         {(() => {
+                                            const finalGrade = finalGrades.find(fg => fg.studentId === student.id);
+                                            if (!finalGrade) return '---';
+                                            return (
+                                                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold mx-auto", getFinalGradeColorClass(finalGrade.grade))}>
+                                                    {finalGrade.grade}
+                                                </div>
+                                            );
+                                        })()}
+                                    </TableCell>
+                                )}
                                  <TableCell className="sticky right-0 bg-background z-10 border-l"></TableCell>
                             </TableRow>
                         ))}

@@ -134,11 +134,12 @@ export const quarters = pgTable('quarters', {
     endDate: pgDate('end_date', { mode: 'date' }).notNull(),
 });
 
-export const quartersRelations = relations(quarters, ({ one }) => ({
+export const quartersRelations = relations(quarters, ({ one, many }) => ({
     academicYear: one(academicYears, {
         fields: [quarters.academicYearId],
         references: [academicYears.id],
     }),
+    finalGrades: many(finalGrades),
 }));
 
 // Таблица итоговых оценок
@@ -149,6 +150,7 @@ export const finalGrades = pgTable('final_grades', {
     academicPeriodId: integer('academic_period_id').notNull(), // ID из quarters или academic_years
     periodType: varchar('period_type', { length: 50, enum: ['quarter', 'year', 'exam'] }).notNull(),
     grade: integer('grade').notNull(),
+    quarterId: integer('quarter_id').references(() => quarters.id, { onDelete: 'set null' }),
 }, (table) => {
     return {
         finalGradeUnq: uniqueIndex('final_grade_unq').on(table.studentId, table.subjectId, table.academicPeriodId, table.periodType),
@@ -164,6 +166,10 @@ export const finalGradesRelations = relations(finalGrades, ({ one }) => ({
         fields: [finalGrades.subjectId],
         references: [subjects.id],
     }),
+    quarter: one(quarters, {
+        fields: [finalGrades.quarterId],
+        references: [quarters.id],
+    }),
 }));
 
 
@@ -178,5 +184,3 @@ export const messages = pgTable('messages', {
     message: text('message').notNull(),
     timestamp: timestamp('timestamp', { mode: 'date' }).notNull().defaultNow(),
 });
-
-    

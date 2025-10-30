@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useRef, useState } from 'react';
@@ -282,13 +283,12 @@ export function GradeSelector({
   existingGradeValue?: number | null
 }) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [currentGrade, setCurrentGrade] = useState(existingGradeValue ?? '');
   const { toast } = useToast();
 
   const handleAction = async (formData: FormData) => {
     const grade = formData.get('grade');
     if (grade === null || grade === '' || isNaN(Number(grade))) {
-        toast({ variant: 'destructive', title: 'Ошибка', description: 'Выберите оценку.' });
+        // This case is for clearing a grade, which we don't support right now, so just return
         return;
     }
     
@@ -303,13 +303,13 @@ export function GradeSelector({
         toast({ variant: 'destructive', title: 'Ошибка', description: result.error });
     } else {
         toast({ title: 'Оценка сохранена' });
-        setCurrentGrade(Number(grade));
     }
   };
-
+  
+  // The form is now submitted when the value of the Select changes.
   return (
-     <form action={handleAction} ref={formRef} onChange={(e) => (e.currentTarget as HTMLFormElement).requestSubmit()}>
-      <Select name="grade" value={String(currentGrade)}>
+     <form action={handleAction} ref={formRef} onChange={(e) => formRef.current?.requestSubmit()}>
+      <Select name="grade" defaultValue={String(existingGradeValue ?? '')}>
         <SelectTrigger className="w-[100px] h-9">
           <SelectValue placeholder="---" />
         </SelectTrigger>
