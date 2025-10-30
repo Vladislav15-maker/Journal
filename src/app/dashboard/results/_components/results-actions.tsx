@@ -91,55 +91,6 @@ export function AddYearButton() {
   );
 }
 
-export function SetGradeCell({
-    studentId,
-    subjectId,
-    quarter,
-    existingGrade
-}: {
-    studentId: number,
-    subjectId: number,
-    quarter: Quarter,
-    existingGrade?: FinalGrade
-}) {
-    const [grade, setGrade] = useState(existingGrade?.grade ?? '');
-    const { toast } = useToast();
-
-    const handleSetGrade = async () => {
-        if (!grade || isNaN(Number(grade))) {
-            toast({
-                variant: 'destructive',
-                title: 'Ошибка',
-                description: 'Введите корректную оценку (число).',
-            });
-            return;
-        }
-
-        const result = await setFinalGrade(studentId, subjectId, quarter.id, Number(grade));
-
-        if (result?.error) {
-             toast({ variant: 'destructive', title: 'Ошибка', description: result.error });
-        } else {
-            toast({ title: 'Оценка сохранена' });
-        }
-    };
-
-    return (
-        <div className="flex items-center gap-2">
-            <Input
-                type="number"
-                value={grade}
-                onChange={(e) => setGrade(e.target.value)}
-                className="h-8 w-20"
-                placeholder="Оценка"
-            />
-            <Button size="sm" onClick={handleSetGrade} disabled={grade === (existingGrade?.grade ?? '')}>
-                {existingGrade ? 'Обновить' : 'Сохранить'}
-            </Button>
-        </div>
-    );
-}
-
 export function GradeSelector({
   studentId,
   subjectId,
