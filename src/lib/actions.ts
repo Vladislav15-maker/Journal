@@ -410,6 +410,36 @@ export async function addAcademicYear(formData: FormData) {
     }
 }
 
+const QuarterSchema = z.object({
+  name: z.string().min(1, "Название четверти обязательно"),
+  academicYearId: z.coerce.number(),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+});
+
+export async function addQuarter(formData: FormData) {
+  const validatedFields = QuarterSchema.safeParse({
+    name: formData.get('name'),
+    academicYearId: formData.get('academicYearId'),
+    startDate: formData.get('startDate'),
+    endDate: formData.get('endDate'),
+  });
+
+  if (!validatedFields.success) {
+    return { error: "Неверные данные. Убедитесь, что все поля заполнены." };
+  }
+  
+  try {
+    await db.insert(quarters).values(validatedFields.data);
+    revalidatePath('/dashboard/results');
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to add quarter:", error);
+    return { error: "Не удалось добавить четверть." };
+  }
+}
+
+
 export async function deleteAcademicYear(yearId: number) {
     try {
         const quartersToDelete = await db.query.quarters.findMany({ where: eq(quarters.academicYearId, yearId), columns: { id: true }});
@@ -528,3 +558,5 @@ export async function exportData(format: 'json' | 'csv') {
         return { error: "Не удалось подготовить данные для экспорта." };
     }
 }
+
+    

@@ -16,12 +16,16 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { addAcademicYear, setFinalGrade, deleteAcademicYear } from '@/lib/actions';
+import { addAcademicYear, setFinalGrade, deleteAcademicYear, addQuarter } from '@/lib/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FinalGrade, Quarter } from '@/lib/definitions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 
 function SubmitButton({ children, ...props }: { children: React.ReactNode, props?: any }) {
@@ -91,6 +95,104 @@ export function AddYearButton() {
       </DialogContent>
     </Dialog>
   );
+}
+
+export function AddQuarterDialog({ academicYearId }: { academicYearId: number }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
+  const { toast } = useToast();
+
+  const handleAction = async (formData: FormData) => {
+    if (!startDate || !endDate) {
+        toast({ variant: 'destructive', title: 'Ошибка', description: "Выберите даты начала и конца четверти."});
+        return;
+    }
+    formData.set('academicYearId', String(academicYearId));
+    formData.set('startDate', startDate.toISOString());
+    formData.set('endDate', endDate.toISOString());
+
+    const result = await addQuarter(formData);
+    if (result?.error) {
+      toast({ variant: 'destructive', title: 'Ошибка', description: result.error });
+    } else {
+      toast({ title: 'Четверть создана' });
+      setIsOpen(false);
+      formRef.current?.reset();
+      setStartDate(undefined);
+      setEndDate(undefined);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="secondary" size="sm" className="w-full mt-2">
+          <PlusCircle className="mr-2 h-4 w-4" /> Создать четверть
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Создать новую четверть</DialogTitle>
+        </DialogHeader>
+        <form ref={formRef} action={handleAction} className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor="name">Название</Label>
+                <Select name="name">
+                    <SelectTrigger id="name">
+                        <SelectValue placeholder="Выберите название" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="1-я четверть">1-я четверть</SelectItem>
+                        <SelectItem value="2-я четверть">2-я четверть</SelectItem>
+                        <SelectItem value="3-я четверть">3-я четверть</SelectItem>
+                        <SelectItem value="4-я четверть">4-я четверть</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+             <div className="space-y-2">
+                <Label>Дата начала</Label>
+                 <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                        variant={"outline"}
+                        className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}
+                        >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {startDate ? format(startDate, "PPP") : <span>Выберите дату</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
+                    </PopoverContent>
+                </Popover>
+            </div>
+            <div className="space-y-2">
+                <Label>Дата окончания</Label>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                        variant={"outline"}
+                        className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}
+                        >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {endDate ? format(endDate, "PPP") : <span>Выберите дату</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
+                    </PopoverContent>
+                </Popover>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild><Button type="button" variant="ghost">Отмена</Button></DialogClose>
+                <SubmitButton>Создать</SubmitButton>
+            </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 export function DeleteYearButton({ yearId, yearName }: { yearId: number, yearName: string }) {
@@ -184,3 +286,5 @@ export function GradeSelector({
      </form>
   );
 }
+
+    

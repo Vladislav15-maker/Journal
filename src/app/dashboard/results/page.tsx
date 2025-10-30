@@ -8,13 +8,13 @@ import { db } from '@/lib/db';
 import { academicYears, classes, finalGrades, grades, lessons, quarters as quartersTable, subjects } from '@/lib/schema';
 import { and, eq, gte, lte, inArray, desc } from 'drizzle-orm';
 import { ResultsController } from './_components/results-controller';
-import { AddYearButton, GradeSelector, DeleteYearButton } from './_components/results-actions';
+import { AddYearButton, GradeSelector, DeleteYearButton, AddQuarterDialog } from './_components/results-actions';
 import { Badge } from '@/components/ui/badge';
 import { Student, Quarter } from '@/lib/definitions';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
+import { Separator } from '@/components/ui/separator';
 
 type CalculatedResult = {
     student: Student;
@@ -33,7 +33,8 @@ function calculateQuarterlyPercentage(grades: (typeof grades.$inferSelect & { le
     const formativeGrades = grades.filter(g =>
         (g.lesson.lessonType === 'Default' || g.lesson.lessonType === 'Class Work' || g.lesson.lessonType === 'Independent Work')
         && g.grade !== null && g.grade >= 0
-    );
+    ).sort((a, b) => b.grade! - a.grade!).slice(0, 10); // Берем до 10 лучших оценок
+
     const sorGrades = grades.filter(g => g.lesson.lessonType === 'SOR' && g.grade !== null && g.grade >= 0 && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
     const sochGrades = grades.filter(g => g.lesson.lessonType === 'SOCH' && g.grade !== null && g.grade >= 0 && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
 
@@ -57,7 +58,6 @@ function calculateQuarterlyPercentage(grades: (typeof grades.$inferSelect & { le
     // --- Суммативное оценивание за четверть (SOCH) - 40% weight ---
     let sochAveragePercentage = 0;
     if (sochGrades.length > 0) {
-        // SOCH is usually one per quarter, but we calculate average for robustness
         const sochTotal = sochGrades.reduce((acc, g) => acc + g.grade!, 0);
         const sochMaxTotal = sochGrades.reduce((acc, g) => acc + g.lesson.maxPoints!, 0);
         sochAveragePercentage = sochMaxTotal > 0 ? (sochTotal / sochMaxTotal) * 100 : 0;
@@ -126,7 +126,7 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                 });
                 const lessonIds = quarterLessons.map(l => l.id);
 
-                if (lessonIds.length > 0) {
+                if (lessonIds.length > 0 && studentIds.length > 0) {
                     studentGrades = await db.query.grades.findMany({
                         where: and(inArray(grades.studentId, studentIds), inArray(grades.lessonId, lessonIds)),
                         with: { lesson: true }
@@ -148,17 +148,27 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                     if (!periodId) return null;
                     return finalGradesForStudent.find(fg => fg.periodType === periodType && fg.academicPeriodId === periodId)?.grade;
                 }
+                
+                const quarterNameMapping: {[key: string]: 'q1' | 'q2' | 'q3' | 'q4'} = {
+                    "1-я четверть": 'q1',
+                    "2-я четверть": 'q2',
+                    "3-я четверть": 'q3',
+                    "4-я четверть": 'q4',
+                };
+
+
+                const finalGradesObj: CalculatedResult['finalGrades'] = { year: getFinalGrade('year', selectedYearId) };
+                selectedYear.quarters.forEach(q => {
+                    const qKey = quarterNameMapping[q.name];
+                    if(qKey) {
+                        finalGradesObj[qKey] = getFinalGrade('quarter', q.id)
+                    }
+                })
 
                 return {
                     student,
                     totalPercentage,
-                    finalGrades: {
-                        q1: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name.includes('1'))?.id),
-                        q2: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name.includes('2'))?.id),
-                        q3: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name.includes('3'))?.id),
-                        q4: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name.includes('4'))?.id),
-                        year: getFinalGrade('year', selectedYearId),
-                    }
+                    finalGrades: finalGradesObj
                 };
             });
         }
@@ -173,17 +183,33 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                 </CardHeader>
                 <CardContent className="flex flex-col gap-2">
                     {allYears.map(y => (
-                        <Link key={y.id} href={`/dashboard/results?yearId=${y.id}`} scroll={false} className="group flex items-center justify-between">
+                       <div key={y.id}>
+                         <div className="group flex items-center justify-between">
                             <Button
                                 variant={selectedYearId === y.id ? 'secondary' : 'ghost'}
-                                className="w-full justify-start"
+                                className="w-full justify-start flex-1"
+                                asChild
                             >
-                                {y.name}
+                                <Link href={`/dashboard/results?yearId=${y.id}`} scroll={false}>
+                                 {y.name}
+                                </Link>
                             </Button>
                              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                 <DeleteYearButton yearId={y.id} yearName={y.name} />
                              </div>
-                        </Link>
+                        </div>
+                        {selectedYearId === y.id && (
+                            <div className="pl-4 mt-2 space-y-1">
+                                <p className="text-xs font-semibold text-muted-foreground">Четверти:</p>
+                                {y.quarters.length > 0 ? y.quarters.map(q => (
+                                    <p key={q.id} className="text-sm">{q.name}</p>
+                                )) : (
+                                    <p className="text-xs text-muted-foreground">Нет четвертей</p>
+                                )}
+                                <AddQuarterDialog academicYearId={y.id} />
+                            </div>
+                        )}
+                       </div>
                     ))}
                 </CardContent>
                 <CardFooter>
@@ -225,25 +251,28 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                                 <TableRow key={res.student.id}>
                                     <TableCell className="font-medium">{res.student.lastName} {res.student.firstName}</TableCell>
                                     <TableCell className="text-center">
-                                        {selectedQuarterId && (
+                                        {selectedQuarterId ? (
                                             <Badge variant={res.totalPercentage >= 86 ? 'default' : res.totalPercentage >= 66 ? 'secondary' : res.totalPercentage >= 30 ? 'outline' : 'destructive'}>
                                                 {res.totalPercentage}%
                                             </Badge>
-                                        )}
+                                        ) : '---'}
                                     </TableCell>
-                                    {selectedYear?.quarters.map((q, index) => (
-                                        <TableCell key={q.id} className="text-center">
-                                            {selectedSubjectId ? (
-                                                <GradeSelector 
-                                                    studentId={res.student.id}
-                                                    subjectId={selectedSubjectId}
-                                                    academicPeriodId={q.id}
-                                                    periodType='quarter'
-                                                    existingGradeValue={res.finalGrades[`q${index + 1}` as keyof typeof res.finalGrades]}
-                                                />
-                                            ) : '---'}
-                                        </TableCell>
-                                    ))}
+                                    {selectedYear?.quarters.map((q) => {
+                                        const quarterKey = (q.name.match(/(\d)/)?.[0] ?? '') as '1' | '2' | '3' | '4';
+                                        return (
+                                            <TableCell key={q.id} className="text-center">
+                                                {selectedSubjectId ? (
+                                                    <GradeSelector 
+                                                        studentId={res.student.id}
+                                                        subjectId={selectedSubjectId}
+                                                        academicPeriodId={q.id}
+                                                        periodType='quarter'
+                                                        existingGradeValue={res.finalGrades[`q${quarterKey}`]}
+                                                    />
+                                                ) : '---'}
+                                            </TableCell>
+                                        )
+                                    })}
                                     <TableCell className="text-center">
                                         {selectedSubjectId ? (
                                             <GradeSelector 
@@ -265,3 +294,6 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
     );
 }
 
+
+
+    
