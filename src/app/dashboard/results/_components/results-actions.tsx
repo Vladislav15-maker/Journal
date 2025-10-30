@@ -160,7 +160,7 @@ export function AddQuarterDialog({ academicYearId }: { academicYearId: number })
                         className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}
                         >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {startDate ? format(startDate, "PPP", { locale: require('date-fns/locale/ru') }) : <span>Выберите дату</span>}
+                        {startDate ? format(startDate, "PPP") : <span>Выберите дату</span>}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -177,7 +177,7 @@ export function AddQuarterDialog({ academicYearId }: { academicYearId: number })
                         className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}
                         >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {endDate ? format(endDate, "PPP", { locale: require('date-fns/locale/ru') }) : <span>Выберите дату</span>}
+                        {endDate ? format(endDate, "PPP") : <span>Выберите дату</span>}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
