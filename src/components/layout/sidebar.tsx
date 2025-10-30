@@ -2,7 +2,7 @@
 "use client";
 
 import { usePathname } from 'next/navigation';
-import { BookOpen, Users, BarChart, MessageSquare, Settings, LogOut, PanelLeft, Calendar, Award } from 'lucide-react';
+import { BookOpen, Users, BarChart, MessageSquare, Settings, LogOut, PanelLeft, Calendar, Award, CalendarDays } from 'lucide-react';
 import { Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, useSidebar } from '@/components/ui/sidebar';
 import { Logo } from '@/components/icons/logo';
 import { logout } from '@/lib/actions';
@@ -66,4 +66,3 @@ export function AppSidebar() {
         </Sidebar>
     );
 }
-

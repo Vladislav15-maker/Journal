@@ -1,15 +1,18 @@
 
 import React from 'react';
-import { Award } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Award, CalendarDays, Trash2 } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { db } from '@/lib/db';
 import { academicYears, classes, finalGrades, grades, lessons, quarters as quartersTable, subjects } from '@/lib/schema';
-import { and, eq, gte, lte, inArray } from 'drizzle-orm';
+import { and, eq, gte, lte, inArray, desc } from 'drizzle-orm';
 import { ResultsController } from './_components/results-controller';
-import { AddYearButton, GradeSelector } from './_components/results-actions';
+import { AddYearButton, GradeSelector, DeleteYearButton } from './_components/results-actions';
 import { Badge } from '@/components/ui/badge';
-import { Student } from '@/lib/definitions';
+import { Student, Quarter } from '@/lib/definitions';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 
 type CalculatedResult = {
@@ -28,11 +31,13 @@ type CalculatedResult = {
 }
 
 function calculateQuarterlyPercentage(grades: (typeof grades.$inferSelect & { lesson: typeof lessons.$inferSelect })[]): number {
-    const sorGrades = grades.filter(g => g.lesson.lessonType === 'SOR' && g.grade !== null && g.lesson.maxPoints !== null);
-    const sochGrades = grades.filter(g => g.lesson.lessonType === 'SOCH' && g.grade !== null && g.lesson.maxPoints !== null);
+    const sorGrades = grades.filter(g => g.lesson.lessonType === 'SOR' && g.grade !== null && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
+    const sochGrades = grades.filter(g => g.lesson.lessonType === 'SOCH' && g.grade !== null && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
+    
+    // Берём до 10 формативных оценок.
     const formativeGrades = grades.filter(g => 
         (g.lesson.lessonType === 'Default' || g.lesson.lessonType === 'Class Work' || g.lesson.lessonType === 'Independent Work') && g.grade !== null
-    );
+    ).slice(0, 10);
 
     const sorTotal = sorGrades.reduce((acc, g) => acc + (g.grade! / g.lesson.maxPoints!) * 100, 0);
     const sorAverage = sorGrades.length > 0 ? sorTotal / sorGrades.length : 0;
@@ -40,9 +45,9 @@ function calculateQuarterlyPercentage(grades: (typeof grades.$inferSelect & { le
     const sochTotal = sochGrades.reduce((acc, g) => acc + (g.grade! / g.lesson.maxPoints!) * 100, 0);
     const sochAverage = sochGrades.length > 0 ? sochTotal / sochGrades.length : 0;
 
+    // Для формативных оценок максимальный балл всегда 10
     const formativeTotal = formativeGrades.reduce((acc, g) => acc + g.grade!, 0);
     const formativeCount = formativeGrades.length;
-    // Используем максимум 10 для формативных оценок
     const formativeAveragePercentage = formativeCount > 0 ? (formativeTotal / (formativeCount * 10)) * 100 : 0;
 
     // Веса: ФО - 25%, СОР - 25%, СОЧ - 50%
@@ -62,16 +67,11 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
 
     if (allYears.length === 0) {
         return (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Award /> Итоги</CardTitle>
-                    <CardDescription>Нет данных для отображения.</CardDescription>
-                </CardHeader>
-                <CardContent className="text-center">
-                    <p className="mb-4">Пожалуйста, сначала создайте учебный год.</p>
-                    <AddYearButton />
-                </CardContent>
-            </Card>
+            <div className="flex h-full flex-col items-center justify-center rounded-lg border-2 border-dashed bg-muted p-8 text-center">
+                <h2 className="text-2xl font-bold tracking-tight">У вас еще нет учебных лет</h2>
+                <p className="mb-4 text-muted-foreground">Создайте свой первый учебный год, чтобы начать выставлять итоговые оценки.</p>
+                <AddYearButton />
+            </div>
         );
     }
     
@@ -91,7 +91,7 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
     let results: CalculatedResult[] = [];
     const selectedQuarter = selectedYear?.quarters.find(q => q.id === selectedQuarterId);
 
-    if (selectedClassId && selectedSubjectId && selectedQuarter) {
+    if (selectedClassId && selectedSubjectId && selectedQuarter && selectedYear) {
         const currentClass = await db.query.classes.findFirst({
             where: eq(classes.id, selectedClassId),
             with: { students: true }
@@ -114,7 +114,7 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                 with: { lesson: true }
             }) : [];
             
-            const allFinalGrades = await db.query.finalGrades.findMany({
+            const allFinalGradesForYear = await db.query.finalGrades.findMany({
                 where: and(inArray(finalGrades.studentId, studentIds), eq(finalGrades.subjectId, selectedSubjectId))
             });
 
@@ -122,9 +122,10 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                 const gradesForStudent = studentGrades.filter(g => g.studentId === student.id);
                 const totalPercentage = calculateQuarterlyPercentage(gradesForStudent);
                 
-                const finalGradesForStudent = allFinalGrades.filter(fg => fg.studentId === student.id);
+                const finalGradesForStudent = allFinalGradesForYear.filter(fg => fg.studentId === student.id);
                 
                 const getFinalGrade = (periodType: 'quarter' | 'year' | 'exam', periodId?: number) => {
+                    if (!periodId) return null;
                     return finalGradesForStudent.find(fg => fg.periodType === periodType && fg.academicPeriodId === periodId)?.grade;
                 }
 
@@ -134,10 +135,10 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                     formativeAverage: 0,
                     totalPercentage,
                     finalGrades: {
-                        q1: getFinalGrade('quarter', selectedYear?.quarters.find(q => q.name === '1-я четверть')?.id),
-                        q2: getFinalGrade('quarter', selectedYear?.quarters.find(q => q.name === '2-я четверть')?.id),
-                        q3: getFinalGrade('quarter', selectedYear?.quarters.find(q => q.name === '3-я четверть')?.id),
-                        q4: getFinalGrade('quarter', selectedYear?.quarters.find(q => q.name === '4-я четверть')?.id),
+                        q1: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name === '1-я четверть')?.id),
+                        q2: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name === '2-я четверть')?.id),
+                        q3: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name === '3-я четверть')?.id),
+                        q4: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name === '4-я четверть')?.id),
                         year: getFinalGrade('year', selectedYearId),
                     }
                 };
@@ -147,14 +148,38 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
 
 
     return (
-        <div className="flex flex-col gap-6">
-            <Card>
+        <div className="flex flex-col md:flex-row gap-6">
+            <Card className="w-full md:w-1/4">
+                 <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><CalendarDays/> Учебные года</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-2">
+                    {allYears.map(y => (
+                        <Link key={y.id} href={`/dashboard/results?yearId=${y.id}`} scroll={false} className="group flex items-center justify-between">
+                            <Button
+                                variant={selectedYearId === y.id ? 'secondary' : 'ghost'}
+                                className="w-full justify-start"
+                            >
+                                {y.name}
+                            </Button>
+                             <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                <DeleteYearButton yearId={y.id} yearName={y.name} />
+                             </div>
+                        </Link>
+                    ))}
+                </CardContent>
+                <CardFooter>
+                    <AddYearButton />
+                </CardFooter>
+            </Card>
+
+            <Card className="w-full md:w-3/4">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Award /> Итоги по четвертям и за год</CardTitle>
-                    <CardDescription>Расчет процентов и выставление итоговых оценок.</CardDescription>
+                    <CardTitle className="flex items-center gap-2"><Award /> Итоги</CardTitle>
+                    <CardDescription>Расчет процентов и выставление итоговых оценок для года: {selectedYear?.name}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex items-center justify-between">
+                    <div className="mb-4">
                          <ResultsController
                             academicYears={allYears}
                             allClasses={allClasses}
@@ -164,7 +189,6 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                             selectedClassId={selectedClassId}
                             selectedSubjectId={selectedSubjectId}
                         />
-                        <AddYearButton/>
                     </div>
                    
                     <Table>
@@ -172,10 +196,9 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                             <TableRow>
                                 <TableHead>Ученик</TableHead>
                                 <TableHead className="text-center">Процент за {selectedQuarter?.name}</TableHead>
-                                <TableHead className="text-center">1-я четв.</TableHead>
-                                <TableHead className="text-center">2-я четв.</TableHead>
-                                <TableHead className="text-center">3-я четв.</TableHead>
-                                <TableHead className="text-center">4-я четв.</TableHead>
+                                {selectedYear?.quarters.map(q => (
+                                    <TableHead key={q.id} className="text-center">{q.name.replace('-я четверть', ' ч.')}</TableHead>
+                                ))}
                                 <TableHead className="text-center">Год</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -184,18 +207,20 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                                 <TableRow key={res.student.id}>
                                     <TableCell className="font-medium">{res.student.lastName} {res.student.firstName}</TableCell>
                                     <TableCell className="text-center">
-                                        <Badge variant={res.totalPercentage >= 85 ? 'default' : res.totalPercentage >= 40 ? 'secondary' : 'destructive'}>
-                                            {res.totalPercentage}%
-                                        </Badge>
+                                        {selectedQuarterId && (
+                                            <Badge variant={res.totalPercentage >= 85 ? 'default' : res.totalPercentage >= 40 ? 'secondary' : 'destructive'}>
+                                                {res.totalPercentage}%
+                                            </Badge>
+                                        )}
                                     </TableCell>
-                                    {selectedYear?.quarters.map(q => (
+                                    {selectedYear?.quarters.map((q, index) => (
                                         <TableCell key={q.id} className="text-center">
                                             <GradeSelector 
                                                 studentId={res.student.id}
                                                 subjectId={selectedSubjectId!}
                                                 academicPeriodId={q.id}
                                                 periodType='quarter'
-                                                existingGradeValue={res.finalGrades[`q${q.name.charAt(0)}` as keyof typeof res.finalGrades]}
+                                                existingGradeValue={res.finalGrades[`q${index + 1}` as keyof typeof res.finalGrades]}
                                             />
                                         </TableCell>
                                     ))}
@@ -217,3 +242,4 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
         </div>
     );
 }
+

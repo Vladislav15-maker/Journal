@@ -1,6 +1,7 @@
 
 
 import type { classes, students, subjects, lessons, grades, scheduleItems, messages, academicYears, quarters, finalGrades } from './schema';
+import type { LucideIcon } from 'lucide-react';
 
 export type Student = typeof students.$inferSelect;
 export type Subject = typeof subjects.$inferSelect;
@@ -40,4 +41,3 @@ export const attendanceStatusTranslations: Record<AttendanceStatus, string> = {
     'absent': 'Отсутствовал',
     'excused': 'Отсутствовал по ув. причине',
 };
-

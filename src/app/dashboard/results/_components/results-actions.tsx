@@ -16,11 +16,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { addAcademicYear, setFinalGrade } from '@/lib/actions';
+import { addAcademicYear, setFinalGrade, deleteAcademicYear } from '@/lib/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FinalGrade, Quarter } from '@/lib/definitions';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
 
 function SubmitButton({ children, ...props }: { children: React.ReactNode, props?: any }) {
   const { pending } = useFormStatus();
@@ -57,8 +59,8 @@ export function AddYearButton() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
-          <PlusCircle className="mr-2 h-4 w-4" /> Создать учебный год
+        <Button variant="outline" className="w-full">
+          <PlusCircle className="mr-2 h-4 w-4" /> Создать год
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -89,6 +91,42 @@ export function AddYearButton() {
       </DialogContent>
     </Dialog>
   );
+}
+
+export function DeleteYearButton({ yearId, yearName }: { yearId: number, yearName: string }) {
+    const { toast } = useToast();
+    const handleDelete = async () => {
+        const result = await deleteAcademicYear(yearId);
+        if (result?.error) {
+            toast({ variant: 'destructive', title: 'Ошибка', description: result.error });
+        } else {
+            toast({ title: 'Учебный год удален' });
+        }
+    };
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Это действие навсегда удалит учебный год "{yearName}" и все связанные с ним данные (четверти, итоговые оценки).
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Отмена</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Удалить
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
 }
 
 export function GradeSelector({

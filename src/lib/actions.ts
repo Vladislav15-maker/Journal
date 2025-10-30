@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from './db';
 import { classes, students, subjects, scheduleItems, lessons, grades, messages, academicYears, quarters } from './schema';
 import { revalidatePath } from 'next/cache';
-import { eq, and, inArray, desc } from 'drizzle-orm';
+import { eq, and, inArray, desc, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import { alias } from "drizzle-orm/pg-core";
 import { finalGrades } from './schema';
@@ -422,6 +422,25 @@ export async function addAcademicYear(formData: FormData) {
     }
 }
 
+export async function deleteAcademicYear(yearId: number) {
+    try {
+        const quartersToDelete = await db.query.quarters.findMany({ where: eq(quarters.academicYearId, yearId), columns: { id: true }});
+        if (quartersToDelete.length > 0) {
+            const quarterIds = quartersToDelete.map(q => q.id);
+            await db.delete(finalGrades).where(and(eq(finalGrades.periodType, 'quarter'), inArray(finalGrades.academicPeriodId, quarterIds)));
+        }
+        await db.delete(finalGrades).where(and(eq(finalGrades.periodType, 'year'), eq(finalGrades.academicPeriodId, yearId)));
+        await db.delete(quarters).where(eq(quarters.academicYearId, yearId));
+        await db.delete(academicYears).where(eq(academicYears.id, yearId));
+        
+        revalidatePath('/dashboard/results');
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete academic year:", error);
+        return { error: "Не удалось удалить учебный год." };
+    }
+}
+
 
 const FinalGradeSchema = z.object({
   studentId: z.coerce.number(),
@@ -521,4 +540,3 @@ export async function exportData(format: 'json' | 'csv') {
         return { error: "Не удалось подготовить данные для экспорта." };
     }
 }
-
