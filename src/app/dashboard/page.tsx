@@ -3,7 +3,7 @@
 import { GradebookTable } from '@/components/gradebook/gradebook-table';
 import { db } from '@/lib/db';
 import { classes, subjects as subjectsTable, lessons as lessonsTable, grades as gradesTable, finalGrades, quarters as quartersTable } from '@/lib/schema';
-import { eq, and, inArray, sql } from 'drizzle-orm';
+import { eq, and, inArray, sql, lte, gte } from 'drizzle-orm';
 import { GradebookController } from './_components/gradebook-controller';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
@@ -144,5 +144,3 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
         </div>
     );
 }
-
-    
