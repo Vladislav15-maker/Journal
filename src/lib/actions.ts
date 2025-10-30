@@ -4,11 +4,12 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from './db';
-import { classes, students, subjects, scheduleItems, lessons, grades, messages } from './schema';
+import { classes, students, subjects, scheduleItems, lessons, grades, messages, academicYears, quarters } from './schema';
 import { revalidatePath } from 'next/cache';
 import { eq, and, inArray, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { alias } from "drizzle-orm/pg-core";
+import { finalGrades } from './schema';
 
 export type FormState = {
   message: string;
@@ -40,6 +41,7 @@ export async function addClass(name: string) {
     await db.insert(classes).values({ name });
     revalidatePath('/dashboard/classes');
     revalidatePath('/dashboard');
+    revalidatePath('/dashboard/results');
     return { success: true };
   } catch (error) {
     console.error("Failed to add class:", error);
@@ -54,6 +56,7 @@ export async function deleteClass(classId: number) {
     if (studentsToDelete.length > 0) {
         const studentIds = studentsToDelete.map(s => s.id);
         await db.delete(grades).where(inArray(grades.studentId, studentIds));
+        await db.delete(finalGrades).where(inArray(finalGrades.studentId, studentIds));
     }
 
     const subjectsToDelete = await db.query.subjects.findMany({ where: eq(subjects.classId, classId), columns: { id: true } });
@@ -69,6 +72,7 @@ export async function deleteClass(classId: number) {
       await db.delete(lessons).where(inArray(lessons.subjectId, subjectIds));
       await db.delete(scheduleItems).where(inArray(scheduleItems.subjectId, subjectIds));
       await db.delete(subjects).where(eq(subjects.classId, classId));
+      await db.delete(finalGrades).where(inArray(finalGrades.subjectId, subjectIds));
     }
     
     await db.delete(students).where(eq(students.classId, classId));
@@ -79,6 +83,7 @@ export async function deleteClass(classId: number) {
     revalidatePath('/dashboard/attendance');
     revalidatePath('/dashboard/schedule');
     revalidatePath('/dashboard/messages');
+    revalidatePath('/dashboard/results');
     return { success: true };
   } catch (error) {
     console.error("Failed to delete class:", error);
@@ -111,6 +116,7 @@ export async function addStudent(firstName: string, lastName: string, classId: n
     revalidatePath('/dashboard/classes');
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/attendance');
+    revalidatePath('/dashboard/results');
     return { success: true };
   } catch (error) {
     console.error("Failed to add student:", error);
@@ -121,10 +127,12 @@ export async function addStudent(firstName: string, lastName: string, classId: n
 export async function deleteStudent(studentId: number) {
   try {
     await db.delete(grades).where(eq(grades.studentId, studentId));
+    await db.delete(finalGrades).where(eq(finalGrades.studentId, studentId));
     await db.delete(students).where(eq(students.id, studentId));
     revalidatePath('/dashboard/classes');
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/attendance');
+    revalidatePath('/dashboard/results');
     return { success: true };
   } catch (error) {
     console.error("Failed to delete student:", error);
@@ -141,6 +149,7 @@ export async function addSubject(name: string, classId: number) {
     revalidatePath('/dashboard/classes');
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/schedule');
+    revalidatePath('/dashboard/results');
     return { success: true };
   } catch (error) {
     console.error("Failed to add subject:", error);
@@ -158,11 +167,13 @@ export async function deleteSubject(subjectId: number) {
     }
     await db.delete(lessons).where(eq(lessons.subjectId, subjectId));
     await db.delete(scheduleItems).where(eq(scheduleItems.subjectId, subjectId));
+    await db.delete(finalGrades).where(eq(finalGrades.subjectId, subjectId));
     await db.delete(subjects).where(eq(subjects.id, subjectId));
 
     revalidatePath('/dashboard/classes');
     revalidatePath('/dashboard/schedule');
     revalidatePath('/dashboard');
+    revalidatePath('/dashboard/results');
     return { success: true };
   } catch (error) {
     console.error("Failed to delete subject:", error);
@@ -375,6 +386,76 @@ export async function updateLesson(formData: FormData) {
     }
 }
 
+// --- Results / Final Grades Actions ---
+
+const YearSchema = z.object({
+  name: z.string().regex(/^\d{4}-\d{4}$/, "Формат должен быть ГГГГ-ГГГГ"),
+});
+
+export async function addAcademicYear(formData: FormData) {
+    const validatedFields = YearSchema.safeParse({ name: formData.get('name') });
+    if (!validatedFields.success) {
+        return { error: validatedFields.error.flatten().fieldErrors.name?.[0] };
+    }
+    const { name } = validatedFields.data;
+    const [startYearStr] = name.split('-');
+    const startYear = parseInt(startYearStr);
+
+    try {
+        const newYear = await db.insert(academicYears).values({ name }).returning({ id: academicYears.id });
+        const yearId = newYear[0].id;
+
+        // Automatically create 4 quarters for the new year
+        const quarterData = [
+            { name: '1-я четверть', academicYearId: yearId, startDate: new Date(startYear, 8, 1), endDate: new Date(startYear, 9, 31) }, // Sep 1 - Oct 31
+            { name: '2-я четверть', academicYearId: yearId, startDate: new Date(startYear, 10, 8), endDate: new Date(startYear, 11, 31) }, // Nov 8 - Dec 31
+            { name: '3-я четверть', academicYearId: yearId, startDate: new Date(startYear + 1, 0, 11), endDate: new Date(startYear + 1, 2, 23) }, // Jan 11 - Mar 23
+            { name: '4-я четверть', academicYearId: yearId, startDate: new Date(startYear + 1, 3, 1), endDate: new Date(startYear + 1, 4, 31) }, // Apr 1 - May 31
+        ];
+
+        await db.insert(quarters).values(quarterData);
+
+        revalidatePath('/dashboard/results');
+        return { success: true };
+    } catch (e) {
+        return { error: "Не удалось создать учебный год. Возможно, он уже существует." };
+    }
+}
+
+
+const FinalGradeSchema = z.object({
+  studentId: z.coerce.number(),
+  subjectId: z.coerce.number(),
+  academicPeriodId: z.coerce.number(),
+  periodType: z.enum(['quarter', 'year', 'exam']),
+  grade: z.coerce.number().min(2).max(5),
+});
+
+export async function setFinalGrade(formData: FormData) {
+    const validatedFields = FinalGradeSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedFields.success) {
+        return { error: "Неверные данные для итоговой оценки." };
+    }
+
+    const { studentId, subjectId, academicPeriodId, periodType, grade } = validatedFields.data;
+
+    try {
+        await db.insert(finalGrades)
+            .values({ studentId, subjectId, academicPeriodId, periodType, grade })
+            .onConflictDoUpdate({
+                target: [finalGrades.studentId, finalGrades.subjectId, finalGrades.academicPeriodId, finalGrades.periodType],
+                set: { grade: grade }
+            });
+        
+        revalidatePath('/dashboard/results');
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to set final grade:", error);
+        return { error: "Не удалось сохранить оценку." };
+    }
+}
+
 
 // --- Data Export ---
 export async function exportData(format: 'json' | 'csv') {
@@ -440,3 +521,4 @@ export async function exportData(format: 'json' | 'csv') {
         return { error: "Не удалось подготовить данные для экспорта." };
     }
 }
+

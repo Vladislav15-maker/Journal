@@ -2,7 +2,7 @@
 "use client";
 
 import { usePathname } from 'next/navigation';
-import { BookOpen, Users, BarChart, MessageSquare, Settings, LogOut, PanelLeft, Calendar } from 'lucide-react';
+import { BookOpen, Users, BarChart, MessageSquare, Settings, LogOut, PanelLeft, Calendar, Award } from 'lucide-react';
 import { Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, useSidebar } from '@/components/ui/sidebar';
 import { Logo } from '@/components/icons/logo';
 import { logout } from '@/lib/actions';
@@ -12,6 +12,7 @@ const menuItems = [
     { href: '/dashboard', label: 'Журнал', icon: BookOpen },
     { href: '/dashboard/schedule', label: 'Расписание', icon: Calendar },
     { href: '/dashboard/classes', label: 'Мои классы', icon: Users },
+    { href: '/dashboard/results', label: 'Итоги', icon: Award },
     { href: '/dashboard/attendance', label: 'Посещаемость', icon: BarChart },
     { href: '/dashboard/messages', label: 'Сообщения', icon: MessageSquare },
     { href: '/dashboard/settings', label: 'Настройки', icon: Settings },
@@ -65,3 +66,4 @@ export function AppSidebar() {
         </Sidebar>
     );
 }
+

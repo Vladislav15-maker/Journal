@@ -1,6 +1,6 @@
 
 
-import type { classes, students, subjects, lessons, grades, scheduleItems, messages } from './schema';
+import type { classes, students, subjects, lessons, grades, scheduleItems, messages, academicYears, quarters, finalGrades } from './schema';
 
 export type Student = typeof students.$inferSelect;
 export type Subject = typeof subjects.$inferSelect;
@@ -12,6 +12,9 @@ export type Lesson = typeof lessons.$inferSelect;
 export type Grade = typeof grades.$inferSelect;
 export type ScheduleItem = typeof scheduleItems.$inferSelect;
 export type Message = typeof messages.$inferSelect;
+export type AcademicYear = typeof academicYears.$inferSelect;
+export type Quarter = typeof quarters.$inferSelect;
+export type FinalGrade = typeof finalGrades.$inferSelect;
 
 
 export type LessonType = 'Class Work' | 'Independent Work' | 'Project Work' | 'SOR' | 'SOCH' | 'Default';
@@ -37,3 +40,4 @@ export const attendanceStatusTranslations: Record<AttendanceStatus, string> = {
     'absent': 'Отсутствовал',
     'excused': 'Отсутствовал по ув. причине',
 };
+
