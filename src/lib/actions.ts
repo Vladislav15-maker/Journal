@@ -476,6 +476,62 @@ const FinalGradeSchema = z.object({
   grade: z.coerce.number().min(2).max(5),
 });
 
+async function calculateAndSetYearlyGrade(studentId: number, subjectId: number, academicYearId: number) {
+    // 1. Find all quarters for the academic year
+    const yearQuarters = await db.query.quarters.findMany({
+        where: eq(quarters.academicYearId, academicYearId),
+        columns: { id: true }
+    });
+
+    if (yearQuarters.length < 4) {
+        // Not all quarters exist yet, so can't calculate yearly grade
+        return;
+    }
+
+    const quarterIds = yearQuarters.map(q => q.id);
+
+    // 2. Find all final quarter grades for the student in this subject and year
+    const studentQuarterGrades = await db.query.finalGrades.findMany({
+        where: and(
+            eq(finalGrades.studentId, studentId),
+            eq(finalGrades.subjectId, subjectId),
+            eq(finalGrades.periodType, 'quarter'),
+            inArray(finalGrades.academicPeriodId, quarterIds)
+        ),
+        columns: { grade: true }
+    });
+
+    // 3. Check if all 4 quarter grades are available
+    if (studentQuarterGrades.length === 4) {
+        const gradesArray = studentQuarterGrades.map(g => g.grade);
+        
+        // 4. Calculate the average and round it
+        const sum = gradesArray.reduce((acc, grade) => acc + grade, 0);
+        const average = sum / gradesArray.length;
+        let yearlyGrade = Math.round(average);
+
+        // Rule: If there is at least one '2', the yearly grade cannot be higher than '3'
+        if (gradesArray.includes(2) && yearlyGrade > 3) {
+            yearlyGrade = 3;
+        }
+
+        // 5. Save the yearly grade
+        await db.insert(finalGrades)
+            .values({
+                studentId,
+                subjectId,
+                academicPeriodId: academicYearId,
+                periodType: 'year',
+                grade: yearlyGrade
+            })
+            .onConflictDoUpdate({
+                target: [finalGrades.studentId, finalGrades.subjectId, finalGrades.academicPeriodId, finalGrades.periodType],
+                set: { grade: yearlyGrade }
+            });
+    }
+}
+
+
 export async function setFinalGrade(formData: FormData) {
     const validatedFields = FinalGradeSchema.safeParse(Object.fromEntries(formData.entries()));
 
@@ -493,6 +549,17 @@ export async function setFinalGrade(formData: FormData) {
                 target: [finalGrades.studentId, finalGrades.subjectId, finalGrades.academicPeriodId, finalGrades.periodType],
                 set: { grade: grade }
             });
+
+        // If a quarter grade was set, try to calculate the yearly grade
+        if (periodType === 'quarter') {
+            const quarterInfo = await db.query.quarters.findFirst({
+                where: eq(quarters.id, academicPeriodId),
+                columns: { academicYearId: true }
+            });
+            if (quarterInfo) {
+                await calculateAndSetYearlyGrade(studentId, subjectId, quarterInfo.academicYearId);
+            }
+        }
         
         revalidatePath('/dashboard/results');
         revalidatePath('/dashboard');
@@ -568,4 +635,3 @@ export async function exportData(format: 'json' | 'csv') {
         return { error: "Не удалось подготовить данные для экспорта." };
     }
 }
-
