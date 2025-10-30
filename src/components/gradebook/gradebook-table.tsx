@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Student, Lesson, Grade, LessonType, lessonTypeTranslations } from "@/lib/definitions";
@@ -264,7 +265,8 @@ export function GradebookTable({ students, lessons, grades, subjectId }: Gradebo
                                     key={lesson.id} 
                                     className={cn(
                                         "min-w-[200px] text-center p-0 border-l relative",
-                                        lesson.lessonType !== 'Default' && 'bg-green-100 dark:bg-green-900/30'
+                                        (lesson.lessonType === 'SOR' || lesson.lessonType === 'SOCH') && 'bg-blue-100 dark:bg-blue-900/30',
+                                        (lesson.lessonType === 'Class Work' || lesson.lessonType === 'Independent Work') && 'bg-green-100 dark:bg-green-900/30'
                                     )}
                                 >
                                      <DeleteLessonButton lessonId={lesson.id} lessonDate={formatDate(lesson.date)} />
@@ -272,10 +274,11 @@ export function GradebookTable({ students, lessons, grades, subjectId }: Gradebo
                                         <div className="cursor-pointer h-full p-2 flex flex-col justify-between hover:bg-muted/80">
                                             <div className="font-bold text-sm">{formatDate(lesson.date)}</div>
                                             <div className="text-xs font-normal text-muted-foreground mt-1 text-wrap">
-                                                <p>
-                                                    {lesson.topic}
-                                                    {lesson.lessonType !== 'Default' && ` (${lessonTypeTranslations[lesson.lessonType as LessonType]})`}
+                                                <p className="font-semibold">
+                                                    {lesson.lessonType !== 'Default' ? lessonTypeTranslations[lesson.lessonType as LessonType] : lesson.topic}
                                                 </p>
+                                                {lesson.lessonType !== 'Default' && <p>{lesson.topic}</p>}
+
                                                 {lesson.maxPoints && (
                                                     <p className="font-semibold text-accent">Max: {lesson.maxPoints}</p>
                                                 )}
@@ -307,12 +310,18 @@ export function GradebookTable({ students, lessons, grades, subjectId }: Gradebo
                                     if (!grade) return <TableCell key={`${student.id}-${lesson.id}`} className="border-l"></TableCell>;
                                     
                                     const gradeColorClass = getGradeColorClass(grade.grade ?? undefined, lesson.maxPoints ?? undefined);
+                                    const isSpecialGrade = lesson.lessonType === 'SOR' || lesson.lessonType === 'SOCH';
 
                                     return (
                                         <TableCell key={grade.id} className="text-center p-0 border-l">
                                             <EditGradeDialog grade={grade} lesson={lesson}>
                                                 <div className="cursor-pointer h-full w-full p-2 flex items-center justify-center gap-2 hover:bg-muted/80 min-h-[60px]">
-                                                    <span className={cn("font-bold text-base", gradeColorClass)}>{grade.grade ?? ''}</span>
+                                                    <span className={cn("font-bold text-base", gradeColorClass)}>
+                                                        {grade.grade ?? ''}
+                                                        {isSpecialGrade && lesson.maxPoints && grade.grade !== null &&
+                                                          <span className="text-sm font-normal text-muted-foreground">/{lesson.maxPoints}</span>
+                                                        }
+                                                    </span>
                                                     <AttendanceIcon status={grade.attendance} />
                                                     {grade.comment && (
                                                         <CommentDialog comment={grade.comment} />
@@ -331,3 +340,4 @@ export function GradebookTable({ students, lessons, grades, subjectId }: Gradebo
         </TooltipProvider>
     );
 }
+

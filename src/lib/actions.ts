@@ -349,6 +349,7 @@ export async function updateGrade(formData: FormData) {
         await db.update(grades).set(data).where(eq(grades.id, gradeId));
         revalidatePath('/dashboard');
         revalidatePath('/dashboard/attendance');
+        revalidatePath('/dashboard/results');
         return { success: true };
     } catch (error) {
         console.error("Failed to update grade:", error);
@@ -379,6 +380,7 @@ export async function updateLesson(formData: FormData) {
     try {
         await db.update(lessons).set(data).where(eq(lessons.id, lessonId));
         revalidatePath('/dashboard');
+        revalidatePath('/dashboard/results');
         return { success: true };
     } catch (error) {
         console.error("Failed to update lesson:", error);
@@ -398,23 +400,9 @@ export async function addAcademicYear(formData: FormData) {
         return { error: validatedFields.error.flatten().fieldErrors.name?.[0] };
     }
     const { name } = validatedFields.data;
-    const [startYearStr] = name.split('-');
-    const startYear = parseInt(startYearStr);
 
     try {
-        const newYear = await db.insert(academicYears).values({ name }).returning({ id: academicYears.id });
-        const yearId = newYear[0].id;
-
-        // Automatically create 4 quarters for the new year
-        const quarterData = [
-            { name: '1-я четверть', academicYearId: yearId, startDate: new Date(startYear, 8, 1), endDate: new Date(startYear, 9, 31) }, // Sep 1 - Oct 31
-            { name: '2-я четверть', academicYearId: yearId, startDate: new Date(startYear, 10, 8), endDate: new Date(startYear, 11, 31) }, // Nov 8 - Dec 31
-            { name: '3-я четверть', academicYearId: yearId, startDate: new Date(startYear + 1, 0, 11), endDate: new Date(startYear + 1, 2, 23) }, // Jan 11 - Mar 23
-            { name: '4-я четверть', academicYearId: yearId, startDate: new Date(startYear + 1, 3, 1), endDate: new Date(startYear + 1, 4, 31) }, // Apr 1 - May 31
-        ];
-
-        await db.insert(quarters).values(quarterData);
-
+        await db.insert(academicYears).values({ name });
         revalidatePath('/dashboard/results');
         return { success: true };
     } catch (e) {

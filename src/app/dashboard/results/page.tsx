@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Award, CalendarDays, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -17,8 +18,6 @@ import { cn } from '@/lib/utils';
 
 type CalculatedResult = {
     student: Student;
-    sorSochAverage: number | null;
-    formativeAverage: number | null;
     totalPercentage: number;
     finalGrades: {
         q1?: number | null;
@@ -31,30 +30,46 @@ type CalculatedResult = {
 }
 
 function calculateQuarterlyPercentage(grades: (typeof grades.$inferSelect & { lesson: typeof lessons.$inferSelect })[]): number {
-    const sorGrades = grades.filter(g => g.lesson.lessonType === 'SOR' && g.grade !== null && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
-    const sochGrades = grades.filter(g => g.lesson.lessonType === 'SOCH' && g.grade !== null && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
+    const formativeGrades = grades.filter(g =>
+        (g.lesson.lessonType === 'Default' || g.lesson.lessonType === 'Class Work' || g.lesson.lessonType === 'Independent Work')
+        && g.grade !== null && g.grade >= 0
+    );
+    const sorGrades = grades.filter(g => g.lesson.lessonType === 'SOR' && g.grade !== null && g.grade >= 0 && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
+    const sochGrades = grades.filter(g => g.lesson.lessonType === 'SOCH' && g.grade !== null && g.grade >= 0 && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
+
+    // --- Формативное оценивание (FO) - 10% weight ---
+    let formativeAveragePercentage = 0;
+    if (formativeGrades.length > 0) {
+        // Assuming all formative grades are out of 10 points
+        const formativeTotal = formativeGrades.reduce((acc, g) => acc + g.grade!, 0);
+        const formativeMaxTotal = formativeGrades.length * 10;
+        formativeAveragePercentage = formativeMaxTotal > 0 ? (formativeTotal / formativeMaxTotal) * 100 : 0;
+    }
+
+    // --- Суммативное оценивание за раздел (SOR) - 50% weight ---
+    let sorAveragePercentage = 0;
+    if (sorGrades.length > 0) {
+        const sorTotal = sorGrades.reduce((acc, g) => acc + g.grade!, 0);
+        const sorMaxTotal = sorGrades.reduce((acc, g) => acc + g.lesson.maxPoints!, 0);
+        sorAveragePercentage = sorMaxTotal > 0 ? (sorTotal / sorMaxTotal) * 100 : 0;
+    }
+
+    // --- Суммативное оценивание за четверть (SOCH) - 40% weight ---
+    let sochAveragePercentage = 0;
+    if (sochGrades.length > 0) {
+        // SOCH is usually one per quarter, but we calculate average for robustness
+        const sochTotal = sochGrades.reduce((acc, g) => acc + g.grade!, 0);
+        const sochMaxTotal = sochGrades.reduce((acc, g) => acc + g.lesson.maxPoints!, 0);
+        sochAveragePercentage = sochMaxTotal > 0 ? (sochTotal / sochMaxTotal) * 100 : 0;
+    }
     
-    // Берём до 10 формативных оценок.
-    const formativeGrades = grades.filter(g => 
-        (g.lesson.lessonType === 'Default' || g.lesson.lessonType === 'Class Work' || g.lesson.lessonType === 'Independent Work') && g.grade !== null
-    ).slice(0, 10);
-
-    const sorTotal = sorGrades.reduce((acc, g) => acc + (g.grade! / g.lesson.maxPoints!) * 100, 0);
-    const sorAverage = sorGrades.length > 0 ? sorTotal / sorGrades.length : 0;
-
-    const sochTotal = sochGrades.reduce((acc, g) => acc + (g.grade! / g.lesson.maxPoints!) * 100, 0);
-    const sochAverage = sochGrades.length > 0 ? sochTotal / sochGrades.length : 0;
-
-    // Для формативных оценок максимальный балл всегда 10
-    const formativeTotal = formativeGrades.reduce((acc, g) => acc + g.grade!, 0);
-    const formativeCount = formativeGrades.length;
-    const formativeAveragePercentage = formativeCount > 0 ? (formativeTotal / (formativeCount * 10)) * 100 : 0;
-
-    // Веса: ФО - 25%, СОР - 25%, СОЧ - 50%
-    const totalPercentage = (formativeAveragePercentage * 0.25) + (sorAverage * 0.25) + (sochAverage * 0.5);
+    // --- Final Calculation ---
+    // Weights: FO - 10%, SOR - 50%, SOCH - 40%
+    const totalPercentage = (formativeAveragePercentage * 0.10) + (sorAveragePercentage * 0.50) + (sochAveragePercentage * 0.40);
 
     return Math.round(totalPercentage);
 }
+
 
 export default async function ResultsPage({ searchParams }: { searchParams: { yearId?: string, quarterId?: string, classId?: string, subjectId?: string } }) {
 
@@ -91,7 +106,7 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
     let results: CalculatedResult[] = [];
     const selectedQuarter = selectedYear?.quarters.find(q => q.id === selectedQuarterId);
 
-    if (selectedClassId && selectedSubjectId && selectedQuarter && selectedYear) {
+    if (selectedClassId && selectedSubjectId && selectedYear) {
         const currentClass = await db.query.classes.findFirst({
             where: eq(classes.id, selectedClassId),
             with: { students: true }
@@ -100,19 +115,24 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
         if (currentClass && currentClass.students.length > 0) {
             const studentIds = currentClass.students.map(s => s.id);
             
-            const quarterLessons = await db.query.lessons.findMany({
-                where: and(
-                    eq(lessons.subjectId, selectedSubjectId),
-                    gte(lessons.date, new Date(selectedQuarter.startDate)),
-                    lte(lessons.date, new Date(selectedQuarter.endDate))
-                ),
-            });
-            const lessonIds = quarterLessons.map(l => l.id);
+            let studentGrades: (typeof grades.$inferSelect & { lesson: typeof lessons.$inferSelect })[] = [];
+            if (selectedQuarter) {
+                const quarterLessons = await db.query.lessons.findMany({
+                    where: and(
+                        eq(lessons.subjectId, selectedSubjectId),
+                        gte(lessons.date, new Date(selectedQuarter.startDate)),
+                        lte(lessons.date, new Date(selectedQuarter.endDate))
+                    ),
+                });
+                const lessonIds = quarterLessons.map(l => l.id);
 
-            const studentGrades = lessonIds.length > 0 ? await db.query.grades.findMany({
-                where: and(inArray(grades.studentId, studentIds), inArray(grades.lessonId, lessonIds)),
-                with: { lesson: true }
-            }) : [];
+                if (lessonIds.length > 0) {
+                    studentGrades = await db.query.grades.findMany({
+                        where: and(inArray(grades.studentId, studentIds), inArray(grades.lessonId, lessonIds)),
+                        with: { lesson: true }
+                    });
+                }
+            }
             
             const allFinalGradesForYear = await db.query.finalGrades.findMany({
                 where: and(inArray(finalGrades.studentId, studentIds), eq(finalGrades.subjectId, selectedSubjectId))
@@ -120,7 +140,7 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
 
             results = currentClass.students.map(student => {
                 const gradesForStudent = studentGrades.filter(g => g.studentId === student.id);
-                const totalPercentage = calculateQuarterlyPercentage(gradesForStudent);
+                const totalPercentage = selectedQuarter ? calculateQuarterlyPercentage(gradesForStudent) : 0;
                 
                 const finalGradesForStudent = allFinalGradesForYear.filter(fg => fg.studentId === student.id);
                 
@@ -131,14 +151,12 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
 
                 return {
                     student,
-                    sorSochAverage: 0,
-                    formativeAverage: 0,
                     totalPercentage,
                     finalGrades: {
-                        q1: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name === '1-я четверть')?.id),
-                        q2: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name === '2-я четверть')?.id),
-                        q3: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name === '3-я четверть')?.id),
-                        q4: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name === '4-я четверть')?.id),
+                        q1: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name.includes('1'))?.id),
+                        q2: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name.includes('2'))?.id),
+                        q3: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name.includes('3'))?.id),
+                        q4: getFinalGrade('quarter', selectedYear.quarters.find(q => q.name.includes('4'))?.id),
                         year: getFinalGrade('year', selectedYearId),
                     }
                 };
@@ -208,30 +226,34 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                                     <TableCell className="font-medium">{res.student.lastName} {res.student.firstName}</TableCell>
                                     <TableCell className="text-center">
                                         {selectedQuarterId && (
-                                            <Badge variant={res.totalPercentage >= 85 ? 'default' : res.totalPercentage >= 40 ? 'secondary' : 'destructive'}>
+                                            <Badge variant={res.totalPercentage >= 86 ? 'default' : res.totalPercentage >= 66 ? 'secondary' : res.totalPercentage >= 30 ? 'outline' : 'destructive'}>
                                                 {res.totalPercentage}%
                                             </Badge>
                                         )}
                                     </TableCell>
                                     {selectedYear?.quarters.map((q, index) => (
                                         <TableCell key={q.id} className="text-center">
-                                            <GradeSelector 
-                                                studentId={res.student.id}
-                                                subjectId={selectedSubjectId!}
-                                                academicPeriodId={q.id}
-                                                periodType='quarter'
-                                                existingGradeValue={res.finalGrades[`q${index + 1}` as keyof typeof res.finalGrades]}
-                                            />
+                                            {selectedSubjectId ? (
+                                                <GradeSelector 
+                                                    studentId={res.student.id}
+                                                    subjectId={selectedSubjectId}
+                                                    academicPeriodId={q.id}
+                                                    periodType='quarter'
+                                                    existingGradeValue={res.finalGrades[`q${index + 1}` as keyof typeof res.finalGrades]}
+                                                />
+                                            ) : '---'}
                                         </TableCell>
                                     ))}
                                     <TableCell className="text-center">
-                                        <GradeSelector 
-                                            studentId={res.student.id}
-                                            subjectId={selectedSubjectId!}
-                                            academicPeriodId={selectedYearId!}
-                                            periodType='year'
-                                            existingGradeValue={res.finalGrades.year}
-                                        />
+                                        {selectedSubjectId ? (
+                                            <GradeSelector 
+                                                studentId={res.student.id}
+                                                subjectId={selectedSubjectId}
+                                                academicPeriodId={selectedYearId!}
+                                                periodType='year'
+                                                existingGradeValue={res.finalGrades.year}
+                                            />
+                                        ) : '---'}
                                     </TableCell>
                                 </TableRow>
                             ))}
