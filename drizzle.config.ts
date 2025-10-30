@@ -1,8 +1,6 @@
-
 import type { Config } from 'drizzle-kit';
 import * as dotenv from 'dotenv';
 
-// Загружаем переменные из .env.local
 dotenv.config({ path: '.env.local' });
 
 if (!process.env.POSTGRES_URL) {
