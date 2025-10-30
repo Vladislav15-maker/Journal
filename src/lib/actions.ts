@@ -486,11 +486,9 @@ export async function setFinalGrade(formData: FormData) {
 
     const { studentId, subjectId, academicPeriodId, periodType, grade } = validatedFields.data;
 
-    const quarterId = periodType === 'quarter' ? academicPeriodId : null;
-
     try {
         await db.insert(finalGrades)
-            .values({ studentId, subjectId, academicPeriodId, periodType, grade, quarterId })
+            .values({ studentId, subjectId, academicPeriodId, periodType, grade })
             .onConflictDoUpdate({
                 target: [finalGrades.studentId, finalGrades.subjectId, finalGrades.academicPeriodId, finalGrades.periodType],
                 set: { grade: grade }
@@ -570,3 +568,4 @@ export async function exportData(format: 'json' | 'csv') {
         return { error: "Не удалось подготовить данные для экспорта." };
     }
 }
+

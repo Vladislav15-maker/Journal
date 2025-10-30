@@ -144,3 +144,4 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
         </div>
     );
 }
+
