@@ -86,54 +86,62 @@ export default async function ClassesPage({ searchParams }: { searchParams: Sear
                 <div>
                   <h3 className="text-lg font-medium mb-4">Список учеников</h3>
                   <AddStudentForm classId={currentClass.id} />
-                  <div className="mt-4 rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>№</TableHead>
-                          <TableHead>Фамилия</TableHead>
-                          <TableHead>Имя</TableHead>
-                          <TableHead className="text-right">Действия</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {currentClass.students?.map((student, index) => (
-                          <TableRow key={student.id}>
-                            <TableCell>{index + 1}</TableCell>
-                            <TableCell className="font-medium">{student.lastName}</TableCell>
-                            <TableCell>{student.firstName}</TableCell>
-                            <TableCell className="text-right">
-                              <DeleteStudentButton studentId={student.id} studentName={`${student.lastName} ${student.firstName}`} />
-                            </TableCell>
+                  {currentClass.students?.length > 0 ? (
+                    <div className="mt-4 rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>№</TableHead>
+                            <TableHead>Фамилия</TableHead>
+                            <TableHead>Имя</TableHead>
+                            <TableHead className="text-right">Действия</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {currentClass.students.map((student, index) => (
+                            <TableRow key={student.id}>
+                              <TableCell>{index + 1}</TableCell>
+                              <TableCell className="font-medium">{student.lastName}</TableCell>
+                              <TableCell>{student.firstName}</TableCell>
+                              <TableCell className="text-right">
+                                <DeleteStudentButton studentId={student.id} studentName={`${student.lastName} ${student.firstName}`} />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-sm text-muted-foreground">В этом классе еще нет учеников.</p>
+                  )}
                 </div>
                 <div>
                   <h3 className="text-lg font-medium mb-4">Список предметов</h3>
                   <AddSubjectForm classId={currentClass.id} />
-                  <div className="mt-4 rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Предмет</TableHead>
-                          <TableHead className="text-right">Действия</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {currentClass.subjects?.map(subject => (
-                          <TableRow key={subject.id}>
-                            <TableCell className="font-medium">{subject.name}</TableCell>
-                            <TableCell className="text-right">
-                              <DeleteSubjectButton subjectId={subject.id} subjectName={subject.name} />
-                            </TableCell>
+                   {currentClass.subjects?.length > 0 ? (
+                    <div className="mt-4 rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Предмет</TableHead>
+                            <TableHead className="text-right">Действия</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {currentClass.subjects.map(subject => (
+                            <TableRow key={subject.id}>
+                              <TableCell className="font-medium">{subject.name}</TableCell>
+                              <TableCell className="text-right">
+                                <DeleteSubjectButton subjectId={subject.id} subjectName={subject.name} />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                   ) : (
+                    <p className="mt-4 text-sm text-muted-foreground">В этом классе еще нет предметов.</p>
+                   )}
                 </div>
               </div>
             </CardContent>
