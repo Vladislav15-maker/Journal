@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Award, CalendarDays, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -38,8 +39,9 @@ function calculateQuarterlyPercentage(grades: (typeof grades.$inferSelect & { le
     const sochGrades = grades.filter(g => g.lesson.lessonType === 'SOCH' && g.grade !== null && g.grade >= 0 && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
 
     // --- Формативное оценивание (FO) - 10% weight ---
+    // Учитывается только если есть 4 или более формативных оценок
     let formativeAveragePercentage = 0;
-    if (formativeGrades.length > 0) {
+    if (formativeGrades.length >= 4) {
         // Assuming all formative grades are out of 10 points
         const formativeTotal = formativeGrades.reduce((acc, g) => acc + g.grade!, 0);
         const formativeMaxTotal = formativeGrades.length * 10;
