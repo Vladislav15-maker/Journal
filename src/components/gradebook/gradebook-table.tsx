@@ -18,6 +18,8 @@ import React from "react";
 import { createLesson, sendMessage, deleteLesson } from "@/lib/actions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
 
 type GradebookTableProps = {
     students: Student[];
@@ -176,7 +178,11 @@ const AddLessonButton = ({ subjectId }: { subjectId: number }) => {
             toast({ variant: 'destructive', title: "Ошибка", description: "Пожалуйста, выберите дату." });
             return;
         }
-        const result = await createLesson(subjectId, date);
+        
+        // Correctly format the date to YYYY-MM-DD string to avoid timezone issues.
+        const dateString = format(date, 'yyyy-MM-dd');
+
+        const result = await createLesson(subjectId, dateString);
         if (result.error) {
             toast({ variant: 'destructive', title: "Ошибка", description: result.error });
         } else {
@@ -205,6 +211,7 @@ const AddLessonButton = ({ subjectId }: { subjectId: number }) => {
                     selected={date}
                     onSelect={setDate}
                     initialFocus
+                    locale={ru}
                 />
                 <div className="p-2 border-t text-center">
                      <Button onClick={handleAddLesson} disabled={!date} className="w-full">Создать урок</Button>

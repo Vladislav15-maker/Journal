@@ -112,8 +112,9 @@ export function AddQuarterDialog({ academicYearId }: { academicYearId: number })
         return;
     }
     formData.set('academicYearId', String(academicYearId));
-    formData.set('startDate', startDate.toISOString());
-    formData.set('endDate', endDate.toISOString());
+    // Correctly format the date to YYYY-MM-DD string to avoid timezone issues.
+    formData.set('startDate', format(startDate, 'yyyy-MM-dd'));
+    formData.set('endDate', format(endDate, 'yyyy-MM-dd'));
 
     const result = await addQuarter(formData);
     if (result?.error) {
@@ -210,8 +211,9 @@ export function EditQuarterDialog({ quarter }: { quarter: Quarter }) {
         return;
     }
     formData.set('quarterId', String(quarter.id));
-    formData.set('startDate', startDate.toISOString());
-    formData.set('endDate', endDate.toISOString());
+    // Correctly format the date to YYYY-MM-DD string to avoid timezone issues.
+    formData.set('startDate', format(startDate, 'yyyy-MM-dd'));
+    formData.set('endDate', format(endDate, 'yyyy-MM-dd'));
 
     const result = await updateQuarter(formData);
     if (result?.error) {
@@ -405,7 +407,3 @@ export function GradeSelector({
      </form>
   );
 }
-
-    
-
-    

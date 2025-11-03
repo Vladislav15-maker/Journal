@@ -280,8 +280,10 @@ export async function deleteMessage(messageId: number) {
 }
 
 // --- Gradebook Actions ---
-export async function createLesson(subjectId: number, date: Date) {
+export async function createLesson(subjectId: number, dateString: string) {
     try {
+        const date = new Date(dateString);
+
         const subject = await db.query.subjects.findFirst({ where: eq(subjects.id, subjectId), with: { class: { with: { students: true } } } });
         if (!subject) {
             return { error: 'Предмет не найден' };
@@ -413,8 +415,8 @@ export async function addAcademicYear(formData: FormData) {
 const QuarterSchema = z.object({
   name: z.string().min(1, "Название четверти обязательно"),
   academicYearId: z.coerce.number(),
-  startDate: z.coerce.date(),
-  endDate: z.coerce.date(),
+  startDate: z.string().min(1, "Дата начала обязательна"),
+  endDate: z.string().min(1, "Дата окончания обязательна"),
 });
 
 export async function addQuarter(formData: FormData) {
@@ -425,8 +427,14 @@ export async function addQuarter(formData: FormData) {
     return { error: "Неверные данные. Убедитесь, что все поля заполнены." };
   }
   
+  const data = {
+      ...validatedFields.data,
+      startDate: new Date(validatedFields.data.startDate),
+      endDate: new Date(validatedFields.data.endDate),
+  }
+
   try {
-    await db.insert(quarters).values(validatedFields.data);
+    await db.insert(quarters).values(data);
     revalidatePath('/dashboard/results');
     return { success: true };
   } catch (error) {
@@ -437,8 +445,8 @@ export async function addQuarter(formData: FormData) {
 
 const UpdateQuarterSchema = z.object({
     quarterId: z.coerce.number(),
-    startDate: z.coerce.date(),
-    endDate: z.coerce.date(),
+    startDate: z.string().min(1, "Дата начала обязательна"),
+    endDate: z.string().min(1, "Дата окончания обязательна"),
 });
 
 export async function updateQuarter(formData: FormData) {
@@ -450,10 +458,15 @@ export async function updateQuarter(formData: FormData) {
     }
     
     const { quarterId, startDate, endDate } = validatedFields.data;
+    
+    const data = {
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+    }
 
     try {
         await db.update(quarters)
-            .set({ startDate, endDate })
+            .set(data)
             .where(eq(quarters.id, quarterId));
         
         revalidatePath('/dashboard/results');
@@ -664,5 +677,3 @@ export async function exportData(format: 'json' | 'csv') {
         return { error: "Не удалось подготовить данные для экспорта." };
     }
 }
-
-    
