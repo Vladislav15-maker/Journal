@@ -15,6 +15,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 
 type CalculatedResult = {
     student: Student;
@@ -207,11 +209,16 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                              </div>
                         </div>
                         {selectedYearId === y.id && (
-                            <div className="pl-4 mt-2 space-y-1">
+                            <div className="pl-4 mt-2 space-y-2">
                                 <p className="text-xs font-semibold text-muted-foreground">Четверти:</p>
                                 {y.quarters.length > 0 ? y.quarters.map(q => (
                                     <div key={q.id} className="group flex items-center justify-between text-sm">
-                                        <p>{q.name}</p>
+                                        <div>
+                                            <p>{q.name}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {format(q.startDate, "dd.MM", { locale: ru })} - {format(q.endDate, "dd.MM", { locale: ru })}
+                                            </p>
+                                        </div>
                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                             <DeleteQuarterButton quarterId={q.id} quarterName={q.name} />
                                         </div>

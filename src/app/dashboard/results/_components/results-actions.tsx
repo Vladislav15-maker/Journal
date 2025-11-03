@@ -27,6 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { ru } from 'date-fns/locale';
 
 
 function SubmitButton({ children, ...props }: { children: React.ReactNode, props?: any }) {
@@ -161,11 +162,11 @@ export function AddQuarterDialog({ academicYearId }: { academicYearId: number })
                         className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}
                         >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {startDate ? format(startDate, "PPP") : <span>Выберите дату</span>}
+                        {startDate ? format(startDate, "PPP", { locale: ru }) : <span>Выберите дату</span>}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
+                        <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus locale={ru}/>
                     </PopoverContent>
                 </Popover>
             </div>
@@ -178,11 +179,11 @@ export function AddQuarterDialog({ academicYearId }: { academicYearId: number })
                         className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}
                         >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {endDate ? format(endDate, "PPP") : <span>Выберите дату</span>}
+                        {endDate ? format(endDate, "PPP", { locale: ru }) : <span>Выберите дату</span>}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
+                        <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus locale={ru}/>
                     </PopoverContent>
                 </Popover>
             </div>
