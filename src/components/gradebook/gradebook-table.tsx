@@ -176,12 +176,7 @@ const AddLessonButton = ({ subjectId }: { subjectId: number }) => {
             toast({ variant: 'destructive', title: "Ошибка", description: "Пожалуйста, выберите дату." });
             return;
         }
-
-        // Correctly handle the date to avoid timezone issues.
-        // We create a new date in UTC to make sure the date is not affected by timezone conversions.
-        const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-
-        const result = await createLesson(subjectId, utcDate);
+        const result = await createLesson(subjectId, date);
         if (result.error) {
             toast({ variant: 'destructive', title: "Ошибка", description: result.error });
         } else {
@@ -368,4 +363,3 @@ export function GradebookTable({ students, lessons, grades, finalGrades, subject
         </TooltipProvider>
     );
 }
-

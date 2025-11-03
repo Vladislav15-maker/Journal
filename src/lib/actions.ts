@@ -509,10 +509,11 @@ async function calculateAndSetYearlyGrade(studentId: number, subjectId: number, 
     // 1. Find all quarters for the academic year
     const yearQuarters = await db.query.quarters.findMany({
         where: eq(quarters.academicYearId, academicYearId),
-        columns: { id: true }
+        columns: { id: true, name: true }
     });
-
-    if (yearQuarters.length < 1) { // Changed to 1 to allow calculation even if not all 4 quarters are there
+    
+    // Only proceed if all 4 quarters exist
+    if (yearQuarters.length < 4) {
         return;
     }
 
@@ -529,8 +530,8 @@ async function calculateAndSetYearlyGrade(studentId: number, subjectId: number, 
         columns: { grade: true }
     });
     
-    // 3. Check if there are any quarter grades to calculate from
-    if (studentQuarterGrades.length > 0) {
+    // 3. Ensure we have all 4 quarter grades before calculating
+    if (studentQuarterGrades.length === 4) {
         const gradesArray = studentQuarterGrades.map(g => g.grade);
         
         // 4. Calculate the average and round it
