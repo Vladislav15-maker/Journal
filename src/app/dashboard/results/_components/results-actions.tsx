@@ -17,9 +17,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2, CalendarIcon } from 'lucide-react';
+import { PlusCircle, Trash2, CalendarIcon, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { addAcademicYear, setFinalGrade, deleteAcademicYear, addQuarter, deleteQuarter } from '@/lib/actions';
+import { addAcademicYear, setFinalGrade, deleteAcademicYear, addQuarter, deleteQuarter, updateQuarter } from '@/lib/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FinalGrade, Quarter } from '@/lib/definitions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -197,6 +197,87 @@ export function AddQuarterDialog({ academicYearId }: { academicYearId: number })
   )
 }
 
+export function EditQuarterDialog({ quarter }: { quarter: Quarter }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date(quarter.startDate));
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date(quarter.endDate));
+  const { toast } = useToast();
+
+  const handleAction = async (formData: FormData) => {
+    if (!startDate || !endDate) {
+        toast({ variant: 'destructive', title: 'Ошибка', description: "Выберите даты начала и конца четверти."});
+        return;
+    }
+    formData.set('quarterId', String(quarter.id));
+    formData.set('startDate', startDate.toISOString());
+    formData.set('endDate', endDate.toISOString());
+
+    const result = await updateQuarter(formData);
+    if (result?.error) {
+      toast({ variant: 'destructive', title: 'Ошибка', description: result.error });
+    } else {
+      toast({ title: 'Четверть обновлена' });
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+         <Button variant="ghost" size="icon" className="h-5 w-5">
+            <Pencil className="h-3 w-3 text-muted-foreground" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Редактировать {quarter.name}</DialogTitle>
+        </DialogHeader>
+        <form ref={formRef} action={handleAction} className="space-y-4">
+             <div className="space-y-2">
+                <Label>Дата начала</Label>
+                 <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                        variant={"outline"}
+                        className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}
+                        >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {startDate ? format(startDate, "PPP", { locale: ru }) : <span>Выберите дату</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus locale={ru}/>
+                    </PopoverContent>
+                </Popover>
+            </div>
+            <div className="space-y-2">
+                <Label>Дата окончания</Label>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                        variant={"outline"}
+                        className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}
+                        >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {endDate ? format(endDate, "PPP", { locale: ru }) : <span>Выберите дату</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus locale={ru}/>
+                    </PopoverContent>
+                </Popover>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild><Button type="button" variant="ghost">Отмена</Button></DialogClose>
+                <SubmitButton>Сохранить</SubmitButton>
+            </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function DeleteYearButton({ yearId, yearName }: { yearId: number, yearName: string }) {
     const { toast } = useToast();
     const handleDelete = async () => {
@@ -324,5 +405,7 @@ export function GradeSelector({
      </form>
   );
 }
+
+    
 
     

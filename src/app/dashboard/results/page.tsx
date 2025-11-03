@@ -8,7 +8,7 @@ import { db } from '@/lib/db';
 import { academicYears, classes, finalGrades, grades, lessons, quarters as quartersTable, subjects } from '@/lib/schema';
 import { and, eq, gte, lte, inArray, desc } from 'drizzle-orm';
 import { ResultsController } from './_components/results-controller';
-import { AddYearButton, GradeSelector, DeleteYearButton, AddQuarterDialog, DeleteQuarterButton } from './_components/results-actions';
+import { AddYearButton, GradeSelector, DeleteYearButton, AddQuarterDialog, DeleteQuarterButton, EditQuarterDialog } from './_components/results-actions';
 import { Badge } from '@/components/ui/badge';
 import { Student, Quarter } from '@/lib/definitions';
 import Link from 'next/link';
@@ -216,10 +216,11 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                                         <div>
                                             <p>{q.name}</p>
                                             <p className="text-xs text-muted-foreground">
-                                                {format(q.startDate, "dd.MM", { locale: ru })} - {format(q.endDate, "dd.MM", { locale: ru })}
+                                                {format(new Date(q.startDate), "dd.MM", { locale: ru })} - {format(new Date(q.endDate), "dd.MM", { locale: ru })}
                                             </p>
                                         </div>
-                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <EditQuarterDialog quarter={q} />
                                             <DeleteQuarterButton quarterId={q.id} quarterName={q.name} />
                                         </div>
                                     </div>
@@ -340,5 +341,7 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
         </div>
     );
 }
+
+    
 
     

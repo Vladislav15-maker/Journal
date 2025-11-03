@@ -435,6 +435,35 @@ export async function addQuarter(formData: FormData) {
   }
 }
 
+const UpdateQuarterSchema = z.object({
+    quarterId: z.coerce.number(),
+    startDate: z.coerce.date(),
+    endDate: z.coerce.date(),
+});
+
+export async function updateQuarter(formData: FormData) {
+    const validatedFields = UpdateQuarterSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedFields.success) {
+        console.log(validatedFields.error.flatten().fieldErrors);
+        return { error: "Неверные данные. Убедитесь, что даты выбраны." };
+    }
+    
+    const { quarterId, startDate, endDate } = validatedFields.data;
+
+    try {
+        await db.update(quarters)
+            .set({ startDate, endDate })
+            .where(eq(quarters.id, quarterId));
+        
+        revalidatePath('/dashboard/results');
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to update quarter:", error);
+        return { error: "Не удалось обновить четверть." };
+    }
+}
+
 
 export async function deleteAcademicYear(yearId: number) {
     try {
@@ -483,8 +512,7 @@ async function calculateAndSetYearlyGrade(studentId: number, subjectId: number, 
         columns: { id: true }
     });
 
-    if (yearQuarters.length < 4) {
-        // Not all quarters exist yet, so can't calculate yearly grade
+    if (yearQuarters.length < 1) { // Changed to 1 to allow calculation even if not all 4 quarters are there
         return;
     }
 
@@ -500,9 +528,9 @@ async function calculateAndSetYearlyGrade(studentId: number, subjectId: number, 
         ),
         columns: { grade: true }
     });
-
-    // 3. Check if all 4 quarter grades are available
-    if (studentQuarterGrades.length === 4) {
+    
+    // 3. Check if there are any quarter grades to calculate from
+    if (studentQuarterGrades.length > 0) {
         const gradesArray = studentQuarterGrades.map(g => g.grade);
         
         // 4. Calculate the average and round it
@@ -635,3 +663,5 @@ export async function exportData(format: 'json' | 'csv') {
         return { error: "Не удалось подготовить данные для экспорта." };
     }
 }
+
+    
