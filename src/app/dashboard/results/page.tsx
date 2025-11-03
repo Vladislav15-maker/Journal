@@ -127,6 +127,7 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
             
             let studentGrades: (typeof grades.$inferSelect & { lesson: typeof lessons.$inferSelect })[] = [];
             if (selectedQuarter) {
+                // Fetch lessons only within the selected quarter's date range
                 const quarterLessons = await db.query.lessons.findMany({
                     where: and(
                         eq(lessons.subjectId, selectedSubjectId),

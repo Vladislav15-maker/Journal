@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Student, Lesson, Grade, FinalGrade, LessonType, lessonTypeTranslations } from "@/lib/definitions";
+import { Student, Lesson, Grade, FinalGrade, LessonType, lessonTypeTranslations, Quarter } from "@/lib/definitions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StudentIcon } from "../icons/student";
 import { EditLessonDialog } from "./edit-lesson-dialog";
@@ -27,7 +27,7 @@ type GradebookTableProps = {
     grades: Grade[];
     finalGrades: FinalGrade[];
     subjectId: number;
-    currentQuarterName?: string;
+    quarters: Quarter[];
 };
 
 const getGradeColorClass = (grade: number | undefined, maxPoints: number | undefined): string => {
@@ -258,7 +258,7 @@ const DeleteLessonButton = ({ lessonId, lessonDate }: { lessonId: number, lesson
     );
 }
 
-export function GradebookTable({ students, lessons, grades, finalGrades, subjectId, currentQuarterName }: GradebookTableProps) {
+export function GradebookTable({ students, lessons, grades, finalGrades, subjectId, quarters }: GradebookTableProps) {
 
     const formatDate = (dateString: string | Date) => {
         const date = new Date(dateString);
@@ -302,11 +302,11 @@ export function GradebookTable({ students, lessons, grades, finalGrades, subject
                                     </EditLessonDialog>
                                 </TableHead>
                             ))}
-                            {currentQuarterName && (
-                                 <TableHead className="min-w-[120px] text-center font-bold border-l-2 border-primary">
-                                     Итог за {currentQuarterName.replace('-я четверть', ' ч.')}
-                                 </TableHead>
-                            )}
+                            {quarters.map(quarter => (
+                                <TableHead key={`q-header-${quarter.id}`} className="min-w-[120px] text-center font-bold border-l-2 border-primary">
+                                    Итог за {quarter.name.replace('-я четверть', ' ч.')}
+                                </TableHead>
+                            ))}
                             <TableHead className="sticky right-0 bg-background z-20 p-0">
                                 <AddLessonButton subjectId={subjectId} />
                             </TableHead>
@@ -348,19 +348,18 @@ export function GradebookTable({ students, lessons, grades, finalGrades, subject
                                         </TableCell>
                                     );
                                 })}
-                                {currentQuarterName && (
-                                    <TableCell className="text-center font-bold border-l-2 border-primary">
-                                         {(() => {
-                                            const finalGrade = finalGrades.find(fg => fg.studentId === student.id);
-                                            if (!finalGrade) return '---';
-                                            return (
-                                                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold mx-auto", getFinalGradeColorClass(finalGrade.grade))}>
+                                {quarters.map(quarter => {
+                                     const finalGrade = finalGrades.find(fg => fg.studentId === student.id && fg.academicPeriodId === quarter.id);
+                                     return (
+                                        <TableCell key={`q-grade-${student.id}-${quarter.id}`} className="text-center font-bold border-l-2 border-primary">
+                                            {finalGrade ? (
+                                                 <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold mx-auto", getFinalGradeColorClass(finalGrade.grade))}>
                                                     {finalGrade.grade}
                                                 </div>
-                                            );
-                                        })()}
-                                    </TableCell>
-                                )}
+                                            ) : '---'}
+                                        </TableCell>
+                                     );
+                                })}
                                  <TableCell className="sticky right-0 bg-background z-10 border-l"></TableCell>
                             </TableRow>
                         ))}

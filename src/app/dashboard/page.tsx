@@ -2,7 +2,7 @@
 
 import { GradebookTable } from '@/components/gradebook/gradebook-table';
 import { db } from '@/lib/db';
-import { classes, subjects as subjectsTable, lessons as lessonsTable, grades as gradesTable, finalGrades, quarters as quartersTable } from '@/lib/schema';
+import { classes, subjects as subjectsTable, lessons as lessonsTable, grades as gradesTable, finalGrades, quarters as quartersTable, academicYears } from '@/lib/schema';
 import { eq, and, inArray, sql, lte, gte } from 'drizzle-orm';
 import { GradebookController } from './_components/gradebook-controller';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -48,17 +48,22 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
         ? parseInt(searchParams.subjectId)
         : currentClass.subjects?.[0]?.id;
 
-    // Determine the current quarter based on today's date
+    // Determine the current academic year
     const today = new Date();
-    const currentQuarter = await db.query.quarters.findFirst({
-        where: and(
-            lte(quartersTable.startDate, today),
-            gte(quartersTable.endDate, today)
-        )
+    // Assuming the academic year starts in September.
+    const currentYear = today.getFullYear() - (today.getMonth() < 8 ? 1 : 0);
+    const yearName = `${currentYear}-${currentYear + 1}`;
+    
+    const currentAcademicYear = await db.query.academicYears.findFirst({
+        where: eq(academicYears.name, yearName),
+        with: {
+            quarters: { orderBy: (q, {asc}) => [asc(q.name)]}
+        }
     });
 
     let currentLessons: (typeof lessonsTable.$inferSelect)[] = [];
     if (selectedSubjectId) {
+        // Fetch all lessons for the subject, not just for the current quarter
         currentLessons = await db.query.lessons.findMany({
             where: eq(lessonsTable.subjectId, selectedSubjectId),
             orderBy: (lessons, { asc }) => [asc(lessons.date)],
@@ -79,14 +84,14 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
         });
     }
     
-    let currentFinalGrades: (typeof finalGrades.$inferSelect)[] = [];
-    if (studentIds.length > 0 && selectedSubjectId && currentQuarter) {
-        currentFinalGrades = await db.query.finalGrades.findMany({
+    let allFinalGradesForYear: (typeof finalGrades.$inferSelect)[] = [];
+    if (studentIds.length > 0 && selectedSubjectId && currentAcademicYear) {
+         allFinalGradesForYear = await db.query.finalGrades.findMany({
             where: and(
                 inArray(finalGrades.studentId, studentIds),
                 eq(finalGrades.subjectId, selectedSubjectId),
                 eq(finalGrades.periodType, 'quarter'),
-                eq(finalGrades.academicPeriodId, currentQuarter.id)
+                inArray(finalGrades.academicPeriodId, currentAcademicYear.quarters.map(q => q.id))
             )
         })
     }
@@ -135,13 +140,12 @@ export default async function GradebookPage({ searchParams }: { searchParams: { 
                         students={studentsWithGrades}
                         lessons={currentLessons}
                         grades={currentGrades}
-                        finalGrades={currentFinalGrades}
+                        finalGrades={allFinalGradesForYear}
                         subjectId={selectedSubjectId}
-                        currentQuarterName={currentQuarter?.name}
+                        quarters={currentAcademicYear?.quarters ?? []}
                     />
                 )}
             </div>
         </div>
     );
 }
-
