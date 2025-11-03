@@ -179,7 +179,9 @@ const AddLessonButton = ({ subjectId }: { subjectId: number }) => {
             return;
         }
         
-        const dateString = format(date, 'yyyy-MM-dd');
+        // Ensure the date is treated as UTC to avoid timezone shifts.
+        const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dateString = utcDate.toISOString().split('T')[0]; // Format to YYYY-MM-DD
 
         const result = await createLesson(subjectId, dateString);
         if (result.error) {
@@ -267,7 +269,7 @@ export function GradebookTable({ students, lessons, grades, finalGrades, subject
     return (
         <TooltipProvider>
             <div className="w-full overflow-x-auto relative border rounded-lg">
-                <Table className="min-w-full border-collapse">
+                <Table className="min-w-full border-collapse relative">
                     <TableHeader className="sticky top-0 bg-background z-20">
                         <TableRow>
                             <TableHead className="sticky left-0 bg-background min-w-[200px] z-30">Ученик</TableHead>
