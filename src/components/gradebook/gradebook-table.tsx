@@ -179,7 +179,10 @@ const AddLessonButton = ({ subjectId }: { subjectId: number }) => {
             return;
         }
         
-        const dateString = format(date, 'yyyy-MM-dd');
+        // Convert date to YYYY-MM-DD string to avoid timezone issues.
+        const timezoneOffset = date.getTimezoneOffset() * 60000;
+        const adjustedDate = new Date(date.getTime() - timezoneOffset);
+        const dateString = adjustedDate.toISOString().split('T')[0];
 
         const result = await createLesson(subjectId, dateString);
         if (result.error) {
@@ -268,7 +271,7 @@ export function GradebookTable({ students, lessons, grades, finalGrades, subject
         <TooltipProvider>
             <div className="w-full overflow-x-auto relative border rounded-lg">
                 <Table className="min-w-full border-collapse">
-                    <TableHeader className="sticky top-0 bg-background z-20">
+                    <TableHeader className="sticky top-0 z-20 bg-background">
                         <TableRow>
                             <TableHead className="sticky left-0 bg-background min-w-[200px] z-30">Ученик</TableHead>
                             {lessons.map(lesson => (
@@ -368,5 +371,3 @@ export function GradebookTable({ students, lessons, grades, finalGrades, subject
         </TooltipProvider>
     );
 }
-
-    
