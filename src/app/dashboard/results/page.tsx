@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { Award, CalendarDays, Trash2, Info } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -46,8 +45,9 @@ function calculateQuarterlyPercentage(grades: (typeof grades.$inferSelect & { le
         const formativeTotal = formativeGrades.reduce((acc, g) => acc + g.grade!, 0);
         // Assuming all formative grades are out of 10 points
         const formativeMaxTotal = formativeGrades.length * 10;
-        const formativeAveragePercentage = formativeMaxTotal > 0 ? (formativeTotal / formativeMaxTotal) * 100 : 0;
-        formativeComponent = formativeAveragePercentage * 0.10;
+        if (formativeMaxTotal > 0) {
+            formativeComponent = (formativeTotal / formativeMaxTotal) * 10;
+        }
     }
 
     // --- Суммативное оценивание за раздел (SOR) - 50% weight ---
@@ -55,8 +55,9 @@ function calculateQuarterlyPercentage(grades: (typeof grades.$inferSelect & { le
     if (sorGrades.length > 0) {
         const sorTotal = sorGrades.reduce((acc, g) => acc + g.grade!, 0);
         const sorMaxTotal = sorGrades.reduce((acc, g) => acc + g.lesson.maxPoints!, 0);
-        const sorAveragePercentage = sorMaxTotal > 0 ? (sorTotal / sorMaxTotal) * 100 : 0;
-        sorComponent = sorAveragePercentage * 0.50;
+        if (sorMaxTotal > 0) {
+            sorComponent = (sorTotal / sorMaxTotal) * 50;
+        }
     }
 
     // --- Суммативное оценивание за четверть (SOCH) - 40% weight ---
@@ -64,8 +65,9 @@ function calculateQuarterlyPercentage(grades: (typeof grades.$inferSelect & { le
     if (sochGrades.length > 0) {
         const sochTotal = sochGrades.reduce((acc, g) => acc + g.grade!, 0);
         const sochMaxTotal = sochGrades.reduce((acc, g) => acc + g.lesson.maxPoints!, 0);
-        const sochAveragePercentage = sochMaxTotal > 0 ? (sochTotal / sochMaxTotal) * 100 : 0;
-        sochComponent = sochAveragePercentage * 0.40;
+        if (sochMaxTotal > 0) {
+            sochComponent = (sochTotal / sochMaxTotal) * 40;
+        }
     }
     
     // --- Final Calculation ---
@@ -133,8 +135,7 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
                         eq(lessons.subjectId, selectedSubjectId),
                         gte(lessons.date, selectedQuarter.startDate),
                         lte(lessons.date, selectedQuarter.endDate)
-                    ),
-                    columns: { id: true }
+                    )
                 });
 
                 if (quarterLessons.length > 0) {
@@ -346,6 +347,8 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
         </div>
     );
 }
+
+    
 
     
 
