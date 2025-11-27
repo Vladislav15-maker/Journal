@@ -127,19 +127,21 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
             
             let studentGrades: (typeof grades.$inferSelect & { lesson: typeof lessons.$inferSelect })[] = [];
             if (selectedQuarter) {
-                // Fetch lessons only within the selected quarter's date range
-                const quarterLessons = await db.query.lessons.findMany({
-                    where: and(
+                const quarterLessons = await db.select()
+                    .from(lessons)
+                    .where(and(
                         eq(lessons.subjectId, selectedSubjectId),
-                        gte(lessons.date, new Date(selectedQuarter.startDate)),
-                        lte(lessons.date, new Date(selectedQuarter.endDate))
-                    ),
-                });
-                const lessonIds = quarterLessons.map(l => l.id);
+                        gte(lessons.date, selectedQuarter.startDate),
+                        lte(lessons.date, selectedQuarter.endDate)
+                    ));
 
-                if (lessonIds.length > 0 && studentIds.length > 0) {
+                if (quarterLessons.length > 0) {
+                    const lessonIds = quarterLessons.map(l => l.id);
                     studentGrades = await db.query.grades.findMany({
-                        where: and(inArray(grades.studentId, studentIds), inArray(grades.lessonId, lessonIds)),
+                        where: and(
+                            inArray(grades.studentId, studentIds),
+                            inArray(grades.lessonId, lessonIds)
+                        ),
                         with: { lesson: true }
                     });
                 }
@@ -342,6 +344,8 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
         </div>
     );
 }
+
+    
 
     
 
