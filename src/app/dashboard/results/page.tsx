@@ -41,34 +41,35 @@ function calculateQuarterlyPercentage(grades: (typeof grades.$inferSelect & { le
     const sochGrades = grades.filter(g => g.lesson.lessonType === 'SOCH' && g.grade !== null && g.grade >= 0 && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
 
     // --- Формативное оценивание (FO) - 10% weight ---
-    // Учитывается только если есть 4 или более формативных оценок
-    let formativeAveragePercentage = 0;
+    let formativeComponent = 0;
     if (formativeGrades.length >= 4) {
-        // Assuming all formative grades are out of 10 points
         const formativeTotal = formativeGrades.reduce((acc, g) => acc + g.grade!, 0);
+        // Assuming all formative grades are out of 10 points
         const formativeMaxTotal = formativeGrades.length * 10;
-        formativeAveragePercentage = formativeMaxTotal > 0 ? (formativeTotal / formativeMaxTotal) * 100 : 0;
+        const formativeAveragePercentage = formativeMaxTotal > 0 ? (formativeTotal / formativeMaxTotal) * 100 : 0;
+        formativeComponent = formativeAveragePercentage * 0.10;
     }
 
     // --- Суммативное оценивание за раздел (SOR) - 50% weight ---
-    let sorAveragePercentage = 0;
+    let sorComponent = 0;
     if (sorGrades.length > 0) {
         const sorTotal = sorGrades.reduce((acc, g) => acc + g.grade!, 0);
         const sorMaxTotal = sorGrades.reduce((acc, g) => acc + g.lesson.maxPoints!, 0);
-        sorAveragePercentage = sorMaxTotal > 0 ? (sorTotal / sorMaxTotal) * 100 : 0;
+        const sorAveragePercentage = sorMaxTotal > 0 ? (sorTotal / sorMaxTotal) * 100 : 0;
+        sorComponent = sorAveragePercentage * 0.50;
     }
 
     // --- Суммативное оценивание за четверть (SOCH) - 40% weight ---
-    let sochAveragePercentage = 0;
+    let sochComponent = 0;
     if (sochGrades.length > 0) {
         const sochTotal = sochGrades.reduce((acc, g) => acc + g.grade!, 0);
         const sochMaxTotal = sochGrades.reduce((acc, g) => acc + g.lesson.maxPoints!, 0);
-        sochAveragePercentage = sochMaxTotal > 0 ? (sochTotal / sochMaxTotal) * 100 : 0;
+        const sochAveragePercentage = sochMaxTotal > 0 ? (sochTotal / sochMaxTotal) * 100 : 0;
+        sochComponent = sochAveragePercentage * 0.40;
     }
     
     // --- Final Calculation ---
-    // Weights: FO - 10%, SOR - 50%, SOCH - 40%
-    const totalPercentage = (formativeAveragePercentage * 0.10) + (sorAveragePercentage * 0.50) + (sochAveragePercentage * 0.40);
+    const totalPercentage = formativeComponent + sorComponent + sochComponent;
 
     return Math.round(totalPercentage);
 }
@@ -125,19 +126,20 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
         if (currentClass && currentClass.students.length > 0) {
             const studentIds = currentClass.students.map(s => s.id);
             
-            let studentGrades: (typeof grades.$inferSelect & { lesson: typeof lessons.$inferSelect })[] = [];
+            let studentGradesForQuarter: (typeof grades.$inferSelect & { lesson: typeof lessons.$inferSelect })[] = [];
             if (selectedQuarter) {
-                const quarterLessons = await db.select()
-                    .from(lessons)
-                    .where(and(
+                 const quarterLessons = await db.query.lessons.findMany({
+                    where: and(
                         eq(lessons.subjectId, selectedSubjectId),
                         gte(lessons.date, selectedQuarter.startDate),
                         lte(lessons.date, selectedQuarter.endDate)
-                    ));
+                    ),
+                    columns: { id: true }
+                });
 
                 if (quarterLessons.length > 0) {
                     const lessonIds = quarterLessons.map(l => l.id);
-                    studentGrades = await db.query.grades.findMany({
+                     studentGradesForQuarter = await db.query.grades.findMany({
                         where: and(
                             inArray(grades.studentId, studentIds),
                             inArray(grades.lessonId, lessonIds)
@@ -152,7 +154,7 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
             });
 
             results = currentClass.students.map(student => {
-                const gradesForStudent = studentGrades.filter(g => g.studentId === student.id);
+                const gradesForStudent = studentGradesForQuarter.filter(g => g.studentId === student.id);
                 const totalPercentage = selectedQuarter ? calculateQuarterlyPercentage(gradesForStudent) : 0;
                 
                 const finalGradesForStudent = allFinalGradesForYear.filter(fg => fg.studentId === student.id);
