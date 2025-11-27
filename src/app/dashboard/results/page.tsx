@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Award, CalendarDays, Trash2, Info } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -31,50 +32,35 @@ type CalculatedResult = {
 }
 
 function calculateQuarterlyPercentage(grades: (typeof grades.$inferSelect & { lesson: typeof lessons.$inferSelect })[]): number {
+    // --- Формативное оценивание (FO) ---
+    // Учитывается только если есть 4 или более оценок.
     const formativeGrades = grades.filter(g =>
         (g.lesson.lessonType === 'Default' || g.lesson.lessonType === 'Class Work' || g.lesson.lessonType === 'Independent Work' || g.lesson.lessonType === 'Project Work')
         && g.grade !== null && g.grade >= 0
     );
-
-    const sorGrades = grades.filter(g => g.lesson.lessonType === 'SOR' && g.grade !== null && g.grade >= 0 && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
-    const sochGrades = grades.filter(g => g.lesson.lessonType === 'SOCH' && g.grade !== null && g.grade >= 0 && g.lesson.maxPoints !== null && g.lesson.maxPoints > 0);
-
-    // --- Формативное оценивание (FO) - 10% weight ---
     let formativeComponent = 0;
     if (formativeGrades.length >= 4) {
-        const formativeTotal = formativeGrades.reduce((acc, g) => acc + g.grade!, 0);
-        // Assuming all formative grades are out of 10 points
-        const formativeMaxTotal = formativeGrades.length * 10;
-        if (formativeMaxTotal > 0) {
-            formativeComponent = (formativeTotal / formativeMaxTotal) * 10;
-        }
+        const formativeSum = formativeGrades.reduce((acc, g) => acc + g.grade!, 0);
+        const formativeAverage = formativeSum / formativeGrades.length;
+        // Округляем до ближайшего целого и ограничиваем 10 баллами.
+        formativeComponent = Math.min(Math.round(formativeAverage), 10);
     }
 
-    // --- Суммативное оценивание за раздел (SOR) - 50% weight ---
-    let sorComponent = 0;
-    if (sorGrades.length > 0) {
-        const sorTotal = sorGrades.reduce((acc, g) => acc + g.grade!, 0);
-        const sorMaxTotal = sorGrades.reduce((acc, g) => acc + g.lesson.maxPoints!, 0);
-        if (sorMaxTotal > 0) {
-            sorComponent = (sorTotal / sorMaxTotal) * 50;
-        }
-    }
-
-    // --- Суммативное оценивание за четверть (SOCH) - 40% weight ---
-    let sochComponent = 0;
-    if (sochGrades.length > 0) {
-        const sochTotal = sochGrades.reduce((acc, g) => acc + g.grade!, 0);
-        const sochMaxTotal = sochGrades.reduce((acc, g) => acc + g.lesson.maxPoints!, 0);
-        if (sochMaxTotal > 0) {
-            sochComponent = (sochTotal / sochMaxTotal) * 40;
-        }
-    }
+    // --- Суммативное оценивание за раздел (СОР) ---
+    const sorGrades = grades.filter(g => g.lesson.lessonType === 'SOR' && g.grade !== null && g.grade >= 0);
+    const sorComponent = sorGrades.reduce((acc, g) => acc + g.grade!, 0);
     
-    // --- Final Calculation ---
-    const totalPercentage = formativeComponent + sorComponent + sochComponent;
+    // --- Суммативное оценивание за четверть (SOCH) ---
+    const sochGrades = grades.filter(g => g.lesson.lessonType === 'SOCH' && g.grade !== null && g.grade >= 0);
+    const sochComponent = sochGrades.reduce((acc, g) => acc + g.grade!, 0);
+    
+    // --- Итоговый расчет ---
+    // Простое сложение компонентов: балл = процент
+    const totalPercentage = sorComponent + sochComponent + formativeComponent;
 
     return Math.round(totalPercentage);
 }
+
 
 const getBadgeVariant = (percentage: number): "excellent" | "good" | "satisfactory" | "destructive" => {
     if (percentage >= 86) return 'excellent';
@@ -347,6 +333,8 @@ export default async function ResultsPage({ searchParams }: { searchParams: { ye
         </div>
     );
 }
+
+    
 
     
 
